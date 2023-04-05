@@ -138,7 +138,7 @@ class ROACHAgent(autonomous_agent.AutonomousAgent):
 		self._affected_by_stop = False # if the ego vehicle is influenced by a stop sign
 
 		TrafficLightHandler.reset(self._world)
-		print("initialized")
+		print("ROACHAgent Initialized")
 
 		self.initialized = True
 

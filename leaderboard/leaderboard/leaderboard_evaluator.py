@@ -37,7 +37,7 @@ from leaderboard.envs.sensor_interface import SensorInterface, SensorConfigurati
 from leaderboard.autoagents.agent_wrapper import  AgentWrapper, AgentError
 from leaderboard.utils.statistics_manager import StatisticsManager
 from leaderboard.utils.route_indexer import RouteIndexer
-
+from leaderboard.utils.EXParser import EXParser
 
 sensors_to_icons = {
     'sensor.camera.rgb':        'carla_camera',
@@ -123,7 +123,7 @@ class LeaderboardEvaluator(object):
         self.module_agent = importlib.import_module(module_name)
 
         # Create the ScenarioManager
-        self.manager = ScenarioManager(args.timeout, args.debug > 1)
+        self.manager = ScenarioManager(args.timeout, args.debug > 1, args.fitness_path)
 
         # Time control for summary purposes
         self._start_time = GameTime.get_time()
@@ -223,12 +223,14 @@ class LeaderboardEvaluator(object):
                 self.ego_vehicles[i].set_transform(ego_vehicles[i].transform)
 
         # sync state
+        print(CarlaDataProvider.get_world().get_actors().filter('vehicle.*'))
         CarlaDataProvider.get_world().tick()
 
     def _load_and_wait_for_world(self, args, town, ego_vehicles=None):
         """
         Load a new CARLA world and provide data to CarlaDataProvider
         """
+        print('_load_and_wait_for_world')
         self.traffic_manager.set_synchronous_mode(False)
         # if hasattr(self, 'world'):
         #     settings = self.world.get_settings()
@@ -348,8 +350,17 @@ class LeaderboardEvaluator(object):
         # Load the world and the scenario
         try:
             self._load_and_wait_for_world(args, config.town, config.ego_vehicles)
-            self._prepare_ego_vehicles(config.ego_vehicles, False)
-            scenario = RouteScenario(world=self.world, config=config, debug_mode=args.debug)
+            self._prepare_ego_vehicles(config.ego_vehicles, False) # Other vehichle is still not added into the scneario
+
+            scenario = None
+            if args.agent_mode == 1:
+                print("AGENT_MODE == 1")
+                start_location, end_location = config.trajectory
+                waypoints = self.get_waypoints(start_location)
+                scenario = RouteScenario(world=self.world, config=config, debug_mode=args.debug, agent_mode=args.agent_mode, waypoints=waypoints)# add vehicle in this line
+            else:
+                waypoints = [carla.Location(start_location.x - 55, start_location.y + 4, start_location.z)]
+                scenario = RouteScenario(world=self.world, config=config, debug_mode=args.debug, agent_mode=args.agent_mode)# add vehicle in this line
             self.statistics_manager.set_scenario(scenario.scenario)
 
             # self.agent_instance._init()
@@ -364,6 +375,10 @@ class LeaderboardEvaluator(object):
             if args.record:
                 self.client.start_recorder("{}/{}_rep{}.log".format(args.record, config.name, config.repetition_index))
             self.manager.load_scenario(scenario, self.agent_instance, config.repetition_index)
+
+            self.log_xml(args, config, 
+                         [scenario.ego_vehicle]+scenario.other_actors, 
+                         [config.trajectory,waypoints])
 
         except Exception as e:
             # The scenario is wrong -> set the ejecution to crashed and stop
@@ -428,6 +443,78 @@ class LeaderboardEvaluator(object):
         if crash_message == "Simulation crashed":
             sys.exit(-1)
 
+    def log_xml(self, args, config, vehicles, waypoints):
+        parser = EXParser(args.fitness_path.replace('fitness.csv','log.xml'))
+        new_setting = parser.addSetting('1', config.town, args.agent_mode)
+        parser.addWeather(new_setting, config.weather)
+        for i, vehicle in enumerate(vehicles):
+            parser.addVehicle(new_setting,str(vehicle.id),vehicle.type_id,waypoints[i])
+        parser.update()
+
+
+
+    def get_waypoints(self, start_location):
+        
+        actor_location = carla.Location(start_location.x - 55,
+				     					start_location.y + 4,
+										start_location.z)
+
+        start_location = actor_location
+        waypoints = [start_location]
+
+        import numpy as np
+
+        y_list = (np.random.rand(9)*2-1)*3
+        x_list = np.arange(9)*8
+
+        last_x, last_y = start_location.x, start_location.y
+        for i, y in enumerate(y_list):
+            y += start_location.y
+            x = x_list[i] + start_location.x
+            
+            for j in range(1, 6):
+                new_location = carla.Location(last_x+(x-last_x)/6*j,
+                                              last_y+(y-last_y)/6*j,
+                                              start_location.z)
+                waypoints.append(new_location)
+            new_location = carla.Location(x, y, start_location.z)
+            waypoints.append(new_location)
+            last_x, last_y = x, y
+     
+        # mod = 0
+        # if mod == 0: #Straight
+        #     for i in range(60):
+        #         new_location = carla.Location(start_location.x + i*1, start_location.y, start_location.z)
+        #         waypoints.append(new_location)
+        # if mod == 1: #Wave
+        #     for i in range(60):
+        #         new_location = carla.Location(start_location.x + i*1, start_location.y-(abs(i%14-7))*0.3, start_location.z)
+        #         waypoints.append(new_location)		
+        # if mod == 2: #Collision
+        #     for i in range(60):
+        #         new_location = carla.Location(start_location.x + i*1, start_location.y+((abs(i%60-30)-30)/30)*5, start_location.z)
+        #         waypoints.append(new_location)
+        # if mod == 3: #TurnLeft
+        #     for i in range(60):
+        #         if i <= 15:
+        #             new_location = carla.Location(waypoints[-1].x + 1, waypoints[-1].y, waypoints[-1].z)
+        #         elif i <= 20:
+        #             new_location = carla.Location(waypoints[-1].x + 1, waypoints[-1].y - 1, waypoints[-1].z)
+        #         else:
+        #             new_location = carla.Location(waypoints[-1].x, waypoints[-1].y - 1, waypoints[-1].z)
+        #         waypoints.append(new_location)
+        # if mod == 4: #TurnLeft-LessPoint
+        #         waypoints.append(carla.Location(waypoints[-1].x + 5, waypoints[-1].y, waypoints[-1].z))
+        #         waypoints.append(carla.Location(waypoints[-1].x + 5, waypoints[-1].y, waypoints[-1].z))
+        #         waypoints.append(carla.Location(waypoints[-1].x + 5, waypoints[-1].y, waypoints[-1].z))
+        #         waypoints.append(carla.Location(waypoints[-1].x + 5, waypoints[-1].y, waypoints[-1].z))
+        #         waypoints.append(carla.Location(waypoints[-1].x, waypoints[-1].y-5, waypoints[-1].z))
+        #         waypoints.append(carla.Location(waypoints[-1].x, waypoints[-1].y-5, waypoints[-1].z))
+        #         waypoints.append(carla.Location(waypoints[-1].x, waypoints[-1].y-5, waypoints[-1].z))
+        #         waypoints.append(carla.Location(waypoints[-1].x, waypoints[-1].y-5, waypoints[-1].z))
+
+        return waypoints
+
     def run(self, args):
         """
         Run the challenge mode
@@ -447,6 +534,9 @@ class LeaderboardEvaluator(object):
         while route_indexer.peek():
             # setup
             config = route_indexer.next()
+            # config get here just include the settings from the xml
+            # currently xml doesot include vehicle and other information
+            # thus config doesnot include them
 
             # run
             self._load_and_run_scenario(args, config)
@@ -509,6 +599,11 @@ def main():
     parser.add_argument("--checkpoint", type=str,
                         default='./simulation_results.json',
                         help="Path to checkpoint used for saving statistics and resuming")
+    parser.add_argument("--fitness_path", type=str,
+                        default='./fitness.csv',
+                        help="Path for fitness.csv")
+    parser.add_argument('--agent_mode', type=int, help='Run with debug output', default=1)
+
 
     arguments = parser.parse_args()
     print("init statistics_manager")

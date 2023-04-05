@@ -38,6 +38,37 @@ class ResultOutputProvider(object):
 
         print(self.create_output_text())
 
+        print(self.create_fitness_score_text())
+
+
+    def create_fitness_score_text(self):
+        # print("\033[1mFitness Scores:\033[0m")
+        for criterion in self._data.scenario.get_criteria():
+            if criterion.name == "InRouteTest":
+                # print(criterion._fitness_scores)
+
+                header = ['\033[1mFitness Score\033[0m', '\033[1mResult\033[0m']
+                list_statistics = [header]
+                fitness_names = [
+                    'Distance out of the Lane',
+                    'Minimum Distance from other Vehicle',
+                    'Minimum Distance from Pedestrians',
+                    'Minimum Distance from static Mesh',
+                    'Distance away from Final Destination',
+                ]
+                logline = ""
+                for i, result in enumerate(criterion._fitness_scores):
+                    list_statistics.extend([[fitness_names[i], result]])
+                    logline += str(result)
+                    logline += ","
+                logline = logline[:-1]+'\n'
+                
+                fitness_file = open(self._data.fitness_path, 'a')
+                fitness_file.write(logline)
+                fitness_file.close()
+                return tabulate(list_statistics, tablefmt='fancy_grid')+'\n'
+        
+
     def create_output_text(self):
         """
         Creates the output message

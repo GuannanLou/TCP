@@ -16,6 +16,7 @@ import xml.etree.ElementTree as ET
 import numpy.random as random
 import os
 import py_trees
+import copy
 
 import carla
 
@@ -24,7 +25,7 @@ from agents.navigation.local_planner import RoadOption
 # pylint: disable=line-too-long
 from srunner.scenarioconfigs.scenario_configuration import ScenarioConfiguration, ActorConfigurationData
 # pylint: enable=line-too-long
-from srunner.scenariomanager.scenarioatomics.atomic_behaviors import Idle, ScenarioTriggerer
+from srunner.scenariomanager.scenarioatomics.atomic_behaviors import Idle, ScenarioTriggerer, ActorTransformSetter, WaypointFollower
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenarios.basic_scenario import BasicScenario
 from srunner.scenarios.control_loss import ControlLoss
@@ -181,7 +182,7 @@ class RouteScenario(BasicScenario):
 
 	category = "RouteScenario"
 
-	def __init__(self, world, config, debug_mode=0, criteria_enable=True):
+	def __init__(self, world, config, debug_mode=0, criteria_enable=True, agent_mode=1, *args, **kwargs):
 		"""
 		Setup all relevant parameters and create scenarios along route
 		"""
@@ -189,12 +190,22 @@ class RouteScenario(BasicScenario):
 		self.route = None
 		self.sampled_scenarios_definitions = None
 
+		self.agent_mod = agent_mode
+		if self.agent_mod != 2:
+			print('agent mod:', self.agent_mod)
+			self.other_vehicle_waypoints = kwargs['waypoints']
+
+			actor_location = self.other_vehicle_waypoints[0]
+			actor_rotation = carla.Rotation(360,0,0)
+			actor_transform = carla.Transform(actor_location, actor_rotation)
+			self.other_actors_transforms = [actor_transform]
+
 		self._update_route(world, config, debug_mode>0)
 
-		ego_vehicle = self._update_ego_vehicle()
+		self.ego_vehicle = self._update_ego_vehicle()
 
 		self.list_scenarios = self._build_scenario_instances(world,
-															 ego_vehicle,
+															 self.ego_vehicle,
 															 self.sampled_scenarios_definitions,
 															 scenarios_per_tick=10,
 															 timeout=self.timeout,
@@ -202,7 +213,7 @@ class RouteScenario(BasicScenario):
 
 
 		super(RouteScenario, self).__init__(name=config.name,
-											ego_vehicles=[ego_vehicle],
+											ego_vehicles=[self.ego_vehicle],
 											config=config,
 											world=world,
 											debug_mode=debug_mode>1,
@@ -231,6 +242,53 @@ class RouteScenario(BasicScenario):
 		self.route = route
 		CarlaDataProvider.set_ego_vehicle_route(convert_transform_to_location(self.route))
 
+		# ## 239-284 waypoint generations
+		# actor_location = carla.Location(self.route[0][0].location.x - 55,
+		# 		     					   self.route[0][0].location.y + 4,
+		# 								   self.route[0][0].location.z)
+		# actor_rotation = carla.Rotation(360,0,0)
+		# actor_transform = carla.Transform(actor_location, actor_rotation)
+
+		# self.other_actors_transforms = [actor_transform]
+
+		# start_location = actor_location
+		# waypoints = [start_location]
+		# mod = 0
+
+		# if mod == 0: #Straight
+		# 	for i in range(60):
+		# 		new_location = carla.Location(start_location.x + i*1, start_location.y, start_location.z)
+		# 		waypoints.append(new_location)
+		# if mod == 1: #Wave
+		# 	for i in range(60):
+		# 		new_location = carla.Location(start_location.x + i*1, start_location.y-(abs(i%14-7))*0.3, start_location.z)
+		# 		waypoints.append(new_location)		
+		# if mod == 2: #Collision
+		# 	for i in range(60):
+		# 		new_location = carla.Location(start_location.x + i*1, start_location.y+((abs(i%60-30)-30)/30)*5, start_location.z)
+		# 		waypoints.append(new_location)
+		# if mod == 3: #TurnLeft
+		# 	for i in range(60):
+		# 		if i <= 15:
+		# 			new_location = carla.Location(waypoints[-1].x + 1, waypoints[-1].y, waypoints[-1].z)
+		# 		elif i <= 20:
+		# 			new_location = carla.Location(waypoints[-1].x + 1, waypoints[-1].y - 1, waypoints[-1].z)
+		# 		else:
+		# 			new_location = carla.Location(waypoints[-1].x, waypoints[-1].y - 1, waypoints[-1].z)
+		# 		waypoints.append(new_location)
+		# if mod == 4: #TurnLeft-LessPoint
+		# 		waypoints.append(carla.Location(waypoints[-1].x + 5, waypoints[-1].y, waypoints[-1].z))
+		# 		waypoints.append(carla.Location(waypoints[-1].x + 5, waypoints[-1].y, waypoints[-1].z))
+		# 		waypoints.append(carla.Location(waypoints[-1].x + 5, waypoints[-1].y, waypoints[-1].z))
+		# 		waypoints.append(carla.Location(waypoints[-1].x + 5, waypoints[-1].y, waypoints[-1].z))
+		# 		waypoints.append(carla.Location(waypoints[-1].x, waypoints[-1].y-5, waypoints[-1].z))
+		# 		waypoints.append(carla.Location(waypoints[-1].x, waypoints[-1].y-5, waypoints[-1].z))
+		# 		waypoints.append(carla.Location(waypoints[-1].x, waypoints[-1].y-5, waypoints[-1].z))
+		# 		waypoints.append(carla.Location(waypoints[-1].x, waypoints[-1].y-5, waypoints[-1].z))
+
+
+		# self.other_vehicle_waypoints = waypoints
+
 		config.agent.set_global_plan(gps_route, self.route, wp_route)
 
 		# Sample the scenarios to be used for this route instance.
@@ -239,9 +297,18 @@ class RouteScenario(BasicScenario):
 		# Timeout of scenario in seconds
 		self.timeout = self._estimate_route_timeout()
 
+		# Mode of other vehicle
+		## 0: auto
+		## 1: waypoint
+		## 2: full_vehicles
+		# self.agent_mod = 2
+
 		# Print route in debug mode
 		if debug_mode:
 			self._draw_waypoints(world, self.route, vertical_shift=1.0, persistency=50000.0)
+			if self.agent_mod == 1:
+				self._draw_waypoints_location(world, self.other_vehicle_waypoints, vertical_shift=1.0, persistency=50000.0)
+
 
 	def _update_ego_vehicle(self):
 		"""
@@ -305,6 +372,23 @@ class RouteScenario(BasicScenario):
 							   color=carla.Color(0, 0, 255), life_time=persistency)
 		world.debug.draw_point(waypoints[-1][0].location + carla.Location(z=vertical_shift), size=0.2,
 							   color=carla.Color(255, 0, 0), life_time=persistency)
+		
+	# pylint: disable=no-self-use
+	def _draw_waypoints_location(self, world, waypoints, vertical_shift, persistency=-1):
+		"""
+		Draw a list of waypoints at a certain height given in vertical_shift.
+		"""
+		for w in waypoints:
+			wp = w + carla.Location(z=vertical_shift)
+			size = 0.1
+			color = carla.Color(255, 64, 0)
+
+			world.debug.draw_point(wp, size=size, color=color, life_time=persistency)
+
+		world.debug.draw_point(waypoints[0] + carla.Location(z=vertical_shift), size=0.2,
+							   color=carla.Color(255, 64, 0), life_time=persistency)
+		world.debug.draw_point(waypoints[-1] + carla.Location(z=vertical_shift), size=0.2,
+							   color=carla.Color(255, 64, 0), life_time=persistency)
 
 	def _scenario_sampling(self, potential_scenarios_definitions, random_seed=0):
 		"""
@@ -488,19 +572,52 @@ class RouteScenario(BasicScenario):
 			'Town10HD': 120, # town10 doesn't load properly for some reason
 		}
 
-		amount = town_amount[config.town] if config.town in town_amount else 0
+		
+		
+		if self.agent_mod == 1: ##route control vehicle
+			elevate_transform = self.other_actors_transforms[0]
+			elevate_transform.location.z = 0.3
+			print(elevate_transform)
 
-		new_actors = CarlaDataProvider.request_new_batch_actors('vehicle.*',
-																amount,
-																carla.Transform(),
-																autopilot=True,
-																random_location=True,
-																rolename='background')
-		if new_actors is None:
-			raise Exception("Error: Unable to add the background activity, all spawn points were occupied")
+			elevate_transform = self.other_actors_transforms[0]
+			other_vehicle = CarlaDataProvider.request_new_actor('vehicle.*',elevate_transform,autopilot=True,random_location=False,rolename='background')
+			self.other_actors.append(other_vehicle)
+			
+		elif self.agent_mod == 0:
+			elevate_transform = self.other_actors_transforms[0]
+			elevate_transform.location.z = 0.3
+			print(elevate_transform)
 
-		for _actor in new_actors:
-			self.other_actors.append(_actor)
+			new_actors = CarlaDataProvider.request_new_batch_actors('vehicle.*',
+														amount,
+														[elevate_transform],
+														autopilot=True,
+														random_location=False,
+														rolename='background')
+			if new_actors is None:
+				raise Exception("Error: Unable to add the background activity, all spawn points were occupied")
+
+			for _actor in new_actors:
+				self.other_actors.append(_actor)
+	
+		else:
+			amount = town_amount[config.town] if config.town in town_amount else 0
+			new_actors = CarlaDataProvider.request_new_batch_actors('vehicle.*',
+														amount,
+														carla.Transform(),
+														autopilot=True,
+														random_location=True,
+														rolename='background')
+			if new_actors is None:
+				raise Exception("Error: Unable to add the background activity, all spawn points were occupied")
+
+			for _actor in new_actors:
+				self.other_actors.append(_actor)
+
+
+		# for attr in dir(elevate_transform):
+		# 	if not attr.startswith('__'):
+		# 		print(attr, getattr(elevate_transform, attr))
 
 		# Add all the actors of the specific scenarios to self.other_actors
 		for scenario in self.list_scenarios:
@@ -549,6 +666,23 @@ class RouteScenario(BasicScenario):
 		subbehavior.add_children(scenario_behaviors)
 		subbehavior.add_child(Idle())  # The behaviours cannot make the route scenario stop
 		behavior.add_child(subbehavior)
+
+		if self.agent_mod == 1:
+			## 643-657 route control vehicle
+			sequence_tesla = py_trees.composites.Sequence("OtherVechicle")
+			tesla_visible = ActorTransformSetter(self.other_actors[0], self.other_actors_transforms[0])
+			sequence_tesla.add_child(tesla_visible)
+			
+			just_drive = py_trees.composites.Parallel("DrivingTowardsSlowVehicle",
+			                                          policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+			tesla_driving_fast = WaypointFollower(self.other_actors[0], 
+												  target_speed=70,
+												  plan=self.other_vehicle_waypoints)
+			just_drive.add_child(tesla_driving_fast)
+			sequence_tesla.add_child(just_drive)
+
+			behavior.add_child(sequence_tesla)
+
 		return behavior
 
 	def _create_test_criteria(self):

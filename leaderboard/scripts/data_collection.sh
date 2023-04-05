@@ -1,5 +1,5 @@
 #!/bin/bash
-export CARLA_ROOT= PATH_TO_CARLA
+export CARLA_ROOT=~/Projects/carla
 export CARLA_SERVER=${CARLA_ROOT}/CarlaUE4.sh
 export PYTHONPATH=$PYTHONPATH:${CARLA_ROOT}/PythonAPI
 export PYTHONPATH=$PYTHONPATH:${CARLA_ROOT}/PythonAPI/carla
@@ -12,21 +12,25 @@ export LEADERBOARD_ROOT=leaderboard
 export CHALLENGE_TRACK_CODENAME=SENSORS
 export PORT=2000
 export TM_PORT=8000
-export DEBUG_CHALLENGE=0
+export DEBUG_CHALLENGE=1
 export REPETITIONS=1 # multiple evaluation runs
 export RESUME=True
 export DATA_COLLECTION=True
+export AGENT_MODE=1
 
 
 # Roach data collection
-export ROUTES=leaderboard/data/TCP_training_routes/routes_town01.xml
+export ROUTE_FILE=routes_short
+current_time=$(date "+%Y-%m-%d|%H:%M:%S")
+
+export ROUTES=leaderboard/data/TCP_training_routes/${ROUTE_FILE}.xml
 export TEAM_AGENT=team_code/roach_ap_agent.py
 export TEAM_CONFIG=roach/config/config_agent.yaml
-export CHECKPOINT_ENDPOINT=data_collect_town01_results.json
+export CHECKPOINT_ENDPOINT=data_collect_${ROUTE_FILE}_${current_time}.json
 export SCENARIOS=leaderboard/data/scenarios/all_towns_traffic_scenarios.json
-export SAVE_PATH=data/data_collect_town01_results/
+export SAVE_PATH=data/${ROUTE_FILE}_${current_time}/
 
-
+# export RECORD_PATH=./
 
 python3 ${LEADERBOARD_ROOT}/leaderboard/leaderboard_evaluator.py \
 --scenarios=${SCENARIOS}  \
@@ -40,6 +44,8 @@ python3 ${LEADERBOARD_ROOT}/leaderboard/leaderboard_evaluator.py \
 --record=${RECORD_PATH} \
 --resume=${RESUME} \
 --port=${PORT} \
+--fitness_path=${SAVE_PATH}/fitness.csv \
+--agent_mode=${AGENT_MODE} \
 --trafficManagerPort=${TM_PORT}
 
 
