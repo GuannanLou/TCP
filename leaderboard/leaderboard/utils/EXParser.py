@@ -22,9 +22,7 @@ class EXParser():
     
     
     def addVehicle(self, setting, id, vtype, waypoints):
-        print()
         vehicle =  ET.SubElement(setting.find('Vehicles'),'Vehicle',{'id':id,'type':vtype})
-        print(vehicle)
         for waypoint in waypoints:
             ET.SubElement(vehicle,'waypoint',{'x':str(waypoint.x),'y':str(waypoint.y),'z':str(waypoint.z)})
 

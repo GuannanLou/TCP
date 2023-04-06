@@ -27,7 +27,6 @@ import carla
 import signal
 import torch
 
-
 from srunner.scenariomanager.carla_data_provider import *
 from srunner.scenariomanager.timer import GameTime
 from srunner.scenariomanager.watchdog import Watchdog
@@ -225,14 +224,13 @@ class LeaderboardEvaluator(object):
                 self.ego_vehicles[i].set_transform(ego_vehicles[i].transform)
 
         # sync state
-        print(CarlaDataProvider.get_world().get_actors().filter('vehicle.*'))
+        # print(CarlaDataProvider.get_world().get_actors().filter('vehicle.*'))
         CarlaDataProvider.get_world().tick()
 
     def _load_and_wait_for_world(self, args, town, ego_vehicles=None):
         """
         Load a new CARLA world and provide data to CarlaDataProvider
         """
-        print('_load_and_wait_for_world')
         self.traffic_manager.set_synchronous_mode(False)
         # if hasattr(self, 'world'):
         #     settings = self.world.get_settings()
@@ -523,7 +521,7 @@ class LeaderboardEvaluator(object):
         """
         # agent_class_name = getattr(self.module_agent, 'get_entry_point')()
         # self.agent_instance = getattr(self.module_agent, agent_class_name)(args.agent_config)
-
+        
         route_indexer = RouteIndexer(args.routes, args.scenarios, args.repetitions)
 
         if args.resume:
@@ -543,12 +541,12 @@ class LeaderboardEvaluator(object):
             # run
             self._load_and_run_scenario(args, config)
 
-            for obj in gc.get_objects():
-                try:
-                    if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
-                        print(type(obj), obj.size())
-                except:
-                    pass
+            # for obj in gc.get_objects():
+            #     try:
+            #         if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+            #             print(type(obj), obj.size())
+            #     except:
+            #         pass
 
             route_indexer.save_state(args.checkpoint)
 

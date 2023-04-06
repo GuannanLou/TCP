@@ -192,7 +192,7 @@ class RouteScenario(BasicScenario):
 
 		self.agent_mod = agent_mode
 		if self.agent_mod != 2:
-			print('agent mod:', self.agent_mod)
+			# print('agent mod:', self.agent_mod)
 			self.other_vehicle_waypoints = kwargs['waypoints']
 
 			actor_location = self.other_vehicle_waypoints[0]
@@ -577,7 +577,7 @@ class RouteScenario(BasicScenario):
 		if self.agent_mod == 1: ##route control vehicle
 			elevate_transform = self.other_actors_transforms[0]
 			elevate_transform.location.z = 0.3
-			print(elevate_transform)
+			# print(elevate_transform)
 
 			elevate_transform = self.other_actors_transforms[0]
 			other_vehicle = CarlaDataProvider.request_new_actor('vehicle.*',elevate_transform,autopilot=True,random_location=False,rolename='background')
@@ -586,7 +586,7 @@ class RouteScenario(BasicScenario):
 		elif self.agent_mod == 0:
 			elevate_transform = self.other_actors_transforms[0]
 			elevate_transform.location.z = 0.3
-			print(elevate_transform)
+			# print(elevate_transform)
 
 			new_actors = CarlaDataProvider.request_new_batch_actors('vehicle.*',
 														amount,
