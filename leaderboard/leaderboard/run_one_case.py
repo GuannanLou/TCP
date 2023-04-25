@@ -26,7 +26,6 @@ import sys
 import carla
 import signal
 import torch
-import copy
 
 from srunner.scenariomanager.carla_data_provider import *
 from srunner.scenariomanager.timer import GameTime
@@ -78,12 +77,33 @@ WEATHERS = {
         'SoftRainSunset': carla.WeatherParameters.SoftRainSunset,
 }
 
-class LeaderboardEvaluator(object):
 
-    """
-    TODO: document me!
-    """
+def weather_parser(weather_vec):
+    '''
+    Converts a 9-length array of 0-1 numbers to a CARLA weather parameter object.
 
+    Args:
+        weather_vec (list): a 9-length array of 0-1 numbers
+    
+    Returns:
+        carla.WeatherParameters
+    '''
+    c, p, pd, wi, sz, sl, fd, w, ff = weather_vec 
+        
+    return carla.WeatherParameters(
+        cloudiness=c*100, 
+        precipitation=p*100, 
+        precipitation_deposits=pd*100, 
+        wind_intensity=wi*100, 
+        sun_azimuth_angle=sz*360, 
+        sun_altitude_angle=sl*180-90, 
+        fog_density=fd*100, 
+        wetness=w*100, 
+        fog_falloff=ff*5
+    )
+
+
+class TestCase(object):
     ego_vehicles = []
 
     # Tunable parameters
@@ -359,39 +379,13 @@ class LeaderboardEvaluator(object):
                 start_location, end_location = config.trajectory
                 waypoints = self.get_waypoints(start_location)
                 scenario = RouteScenario(world=self.world, config=config, debug_mode=args.debug, agent_mode=args.agent_mode, waypoints=waypoints)# add vehicle in this line
-            elif args.agent_mode == 0:
-                start_location, end_location = config.trajectory
-                current_map = CarlaDataProvider.get_map()
-                current_waypoint = current_map.get_waypoint(start_location)
-
-                test_waypoint = current_waypoint.get_left_lane()
-                # test_waypoint = current_waypoint.get_left_lane().get_right_lane()
-                # test_waypoint = current_waypoint.get_left_lane().get_right_lane().get_right_lane()
-                
-                print('current vehicle:', current_waypoint)
-                print('  other vehicle:', test_waypoint)
-
-                road = self._get_road(current_map, test_waypoint)
-
-                road_end = road[-1]
-                road_start = road[0]
-
-                # print(road_start)
-                # print(test_waypoint)
-                # print(road_end)
-
-                self._draw_road(self.world, test_waypoint, road, 
-                                vertical_shift=1.0, persistency=50000.0)
-                # print('++++++++++++++++++++++')
-
-
-                print('leader', road_start)
-                scenario = RouteScenario(world=self.world, 
-                                         config=config, 
-                                         debug_mode=args.debug, 
-                                         agent_mode=args.agent_mode, 
-                                         start_waypoint=[road_start])# add vehicle in this line
+            else:
+                waypoints = [carla.Location(start_location.x - 55, start_location.y + 4, start_location.z)]
+                scenario = RouteScenario(world=self.world, config=config, debug_mode=args.debug, agent_mode=args.agent_mode)# add vehicle in this line
             self.statistics_manager.set_scenario(scenario.scenario)
+
+            # self.agent_instance._init()
+            # self.agent_instance.sensor_interface = SensorInterface()
 
             # Night mode
             if config.weather.sun_altitude_angle < 0.0:
@@ -403,9 +397,9 @@ class LeaderboardEvaluator(object):
                 self.client.start_recorder("{}/{}_rep{}.log".format(args.record, config.name, config.repetition_index))
             self.manager.load_scenario(scenario, self.agent_instance, config.repetition_index)
 
-            # self.log_xml(args, config, 
-            #              [scenario.ego_vehicle]+scenario.other_actors, 
-            #              [config.trajectory,waypoints])
+            self.log_xml(args, config, 
+                         [scenario.ego_vehicle]+scenario.other_actors, 
+                         [config.trajectory,waypoints])
 
         except Exception as e:
             # The scenario is wrong -> set the ejecution to crashed and stop
@@ -470,101 +464,12 @@ class LeaderboardEvaluator(object):
         if crash_message == "Simulation crashed":
             sys.exit(-1)
 
-    
-    def _get_road(self, current_map, current_waypoint):
-        '''
-        Provide a waypoint, return all waypoints on this straight road (section bewteen 2 junctions)
-        '''
-        road_id = current_waypoint.road_id
-        lane_type = current_waypoint.lane_type
-        # last_location = current_waypoint.transform.location
-        # yaw = current_waypoint.transform.rotation.yaw
-        # i = 1
-        # gap = 3
-        # print()
-        # while True:
-        #     print(last_location)
-        #     if yaw >= 315:   #0
-        #         next_location = carla.Location(x=last_location.x - i*gap, y=last_location.y, z=last_location.z)
-        #     elif yaw >= 225: #270
-        #         next_location = carla.Location(x=last_location.x, y=last_location.y + i*gap, z=last_location.z)
-        #     elif yaw >= 135: #180
-        #         next_location = carla.Location(x=last_location.x + i*gap, y=last_location.y, z=last_location.z)
-        #     elif yaw >= 45:  #90    
-        #         next_location = carla.Location(x=last_location.x, y=last_location.y - i*gap, z=last_location.z)
-        #     else:            #0
-        #         next_location = carla.Location(x=last_location.x + i*gap, y=last_location.y, z=last_location.z)
-        #     print(next_location)
-        #     print()
-        #     next_waypoint = current_map.get_waypoint(next_location)
-        #     last_location = next_waypoint.transform.location
-
-        #     if next_waypoint.road_id != road_id:
-        #         break
-            
-        #     road.append(next_waypoint)
-        #     i += 1
-        road = [current_waypoint]
-
-        gap = 3
-
-        pre_waypoint = current_waypoint
-        while True:
-            pre_waypoint = pre_waypoint.previous(gap)
-            if not pre_waypoint:
-                break
-            elif pre_waypoint[-1].is_junction:
-                break
-            else:
-                pre_waypoint = pre_waypoint[-1]
-                road.append(pre_waypoint)
-        road.reverse()
-
-        next_waypoint = current_waypoint
-        while True:
-            next_waypoint = next_waypoint.next(gap)
-            if not next_waypoint:
-                break
-            elif next_waypoint[-1].is_junction:
-                break
-            else:
-                next_waypoint = next_waypoint[-1]
-                road.append(next_waypoint)
-
-        return road
- 
-
-    def _draw_road(self, world, current_waypoint, road, vertical_shift, persistency=-1):
-        """
-        Draw a list of waypoints at a certain height given in vertical_shift.
-        """
-        for w in road:
-            wp = w.transform.location + carla.Location(z=vertical_shift)
-            color = carla.Color(0, 255, 0) # Green
-            size = 0.1
-
-            world.debug.draw_point(wp, size=size, color=color, life_time=persistency)
-
-        world.debug.draw_point(current_waypoint.transform.location + carla.Location(z=vertical_shift), size=0.15,
-                                color=carla.Color(0, 0, 255), life_time=persistency)
-        world.debug.draw_point(road[0].transform.location + carla.Location(z=vertical_shift), size=0.3,
-                                color=carla.Color(0, 0, 255), life_time=persistency)
-        world.debug.draw_point(road[-1].transform.location + carla.Location(z=vertical_shift), size=0.2,
-                                color=carla.Color(255, 0, 0), life_time=persistency)
-
-
     def log_xml(self, args, config, vehicles, waypoints):
         parser = EXParser(args.fitness_path.replace('fitness.csv','log.xml'))
         new_setting = parser.addSetting('1', config.town, args.agent_mode)
         parser.addWeather(new_setting, config.weather)
-        print(waypoints)
-        print(vehicles)
         for i, vehicle in enumerate(vehicles):
-            print(i,vehicle)
-            if i-1 <= len(waypoints):
-                parser.addVehicle(new_setting,str(vehicle.id),vehicle.type_id,waypoints[i])
-            else:
-                parser.addVehicle(new_setting,str(vehicle.id),vehicle.type_id,[])
+            parser.addVehicle(new_setting,str(vehicle.id),vehicle.type_id,waypoints[i])
         parser.update()
 
 

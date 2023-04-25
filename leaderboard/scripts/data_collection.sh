@@ -16,7 +16,7 @@ export DEBUG_CHALLENGE=1
 export REPETITIONS=1 # multiple evaluation runs
 export RESUME=True
 export DATA_COLLECTION=True
-export AGENT_MODE=1
+export AGENT_MODE=0
 
 
 # Roach data collection

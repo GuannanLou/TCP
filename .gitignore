@@ -6,13 +6,3 @@ data/*
 **/__pycache__/*
 
 
-roach/criteria/__pycache__/run_stop_sign.cpython-37.pyc
-roach/models/__pycache__/distributions.cpython-37.pyc
-roach/models/__pycache__/ppo_policy.cpython-37.pyc
-roach/models/__pycache__/torch_layers.cpython-37.pyc
-roach/models/__pycache__/torch_util.cpython-37.pyc
-roach/obs_manager/birdview/__pycache__/chauffeurnet.cpython-37.pyc
-roach/utils/__pycache__/config_utils.cpython-37.pyc
-roach/utils/__pycache__/rl_birdview_wrapper.cpython-37.pyc
-roach/utils/__pycache__/traffic_light.cpython-37.pyc
-roach/utils/__pycache__/transforms.cpython-37.pyc
