@@ -26,6 +26,7 @@ import sys
 import carla
 import signal
 import torch
+import time
 
 from srunner.scenariomanager.carla_data_provider import *
 from srunner.scenariomanager.timer import GameTime
@@ -248,7 +249,7 @@ class TestCase(object):
         # print(CarlaDataProvider.get_world().get_actors().filter('vehicle.*'))
         CarlaDataProvider.get_world().tick()
 
-    def _load_and_wait_for_world(self, args, town, ego_vehicles=None):
+    def _load_and_wait_for_world(self, args, town, weather):
         """
         Load a new CARLA world and provide data to CarlaDataProvider
         """
@@ -273,9 +274,8 @@ class TestCase(object):
         CarlaDataProvider.set_world(self.world)
         CarlaDataProvider.set_traffic_manager_port(int(args.trafficManagerPort))
 
-        if args.weather != "none":
-            assert args.weather in WEATHERS
-            CarlaDataProvider.set_weather(WEATHERS[args.weather])
+        print(weather)
+        CarlaDataProvider.set_weather(weather)
 
         self.traffic_manager.set_synchronous_mode(True)
         self.traffic_manager.set_random_device_seed(int(args.trafficManagerSeed))
@@ -370,22 +370,70 @@ class TestCase(object):
 
         # Load the world and the scenario
         try:
-            self._load_and_wait_for_world(args, config.town, config.ego_vehicles)
+            self._load_and_wait_for_world(args, config.town, config.weather)
             self._prepare_ego_vehicles(config.ego_vehicles, False) # Other vehichle is still not added into the scneario
-
+            
             scenario = None
             if args.agent_mode == 1:
                 print("AGENT_MODE == 1")
                 start_location, end_location = config.trajectory
                 waypoints = self.get_waypoints(start_location)
                 scenario = RouteScenario(world=self.world, config=config, debug_mode=args.debug, agent_mode=args.agent_mode, waypoints=waypoints)# add vehicle in this line
-            else:
-                waypoints = [carla.Location(start_location.x - 55, start_location.y + 4, start_location.z)]
-                scenario = RouteScenario(world=self.world, config=config, debug_mode=args.debug, agent_mode=args.agent_mode)# add vehicle in this line
+            elif args.agent_mode == 0:
+                start_location, end_location = config.trajectory
+                current_map = CarlaDataProvider.get_map()
+                current_waypoint = current_map.get_waypoint(start_location)
+
+                numb_other_vehicle = 0
+                waypoint_other_vehicle = []
+
+                if config.vehicle_infront:
+                    numb_other_vehicle += 1
+                    test_waypoint = current_waypoint.next(2)[-1]
+                    print('----VEHICLE-INFRONT----')
+                    print('##current vehicle:', current_waypoint)
+                    print('####other vehicle:', test_waypoint)
+
+                    waypoint_other_vehicle.append(test_waypoint)
+
+                if config.vehicle_side:
+                    numb_other_vehicle += 1
+                    test_waypoint = current_waypoint.get_right_lane()
+                    print('------VEHICLE-SIDE-----')
+                    print('##current vehicle:', current_waypoint)
+                    print('####other vehicle:', test_waypoint)
+
+                    road = self._get_road(current_map, test_waypoint)
+                    road_start = road[0]
+
+                    waypoint_other_vehicle.append(road_start)
+                    # self._draw_road(self.world, test_waypoint, road, 
+                    #             vertical_shift=1.0, persistency=50000.0)
+                    
+                if config.vehicle_opposite:
+                    numb_other_vehicle += 1
+                    test_waypoint = current_waypoint.get_left_lane()
+                    print('----VEHICLE-OPPOSITE---')
+                    print('##current vehicle:', current_waypoint)
+                    print('####other vehicle:', test_waypoint)
+
+                    road = self._get_road(current_map, test_waypoint)
+
+                    road_end = road[-1]
+                    road_start = road[0]
+
+                    waypoint_other_vehicle.append(road_start)
+                    # self._draw_road(self.world, test_waypoint, road, 
+                    #                 vertical_shift=1.0, persistency=50000.0)
+
+                scenario = RouteScenario(world=self.world, 
+                                         config=config, 
+                                         debug_mode=args.debug, 
+                                         agent_mode=args.agent_mode, 
+                                         numb_other_vehicle=numb_other_vehicle,
+                                         start_waypoint=waypoint_other_vehicle)# add vehicle in this line
             self.statistics_manager.set_scenario(scenario.scenario)
 
-            # self.agent_instance._init()
-            # self.agent_instance.sensor_interface = SensorInterface()
 
             # Night mode
             if config.weather.sun_altitude_angle < 0.0:
@@ -397,9 +445,9 @@ class TestCase(object):
                 self.client.start_recorder("{}/{}_rep{}.log".format(args.record, config.name, config.repetition_index))
             self.manager.load_scenario(scenario, self.agent_instance, config.repetition_index)
 
-            self.log_xml(args, config, 
-                         [scenario.ego_vehicle]+scenario.other_actors, 
-                         [config.trajectory,waypoints])
+            # self.log_xml(args, config, 
+            #              [scenario.ego_vehicle]+scenario.other_actors, 
+            #              [config.trajectory,waypoints])
 
         except Exception as e:
             # The scenario is wrong -> set the ejecution to crashed and stop
@@ -420,27 +468,8 @@ class TestCase(object):
 
         print("\033[1m> Running the route\033[0m")
 
-        # Run the scenario
-        # try:
         self.manager.run_scenario()
 
-        # except AgentError as e:
-        #     # The agent has failed -> stop the route
-        #     print("\n\033[91mStopping the route, the agent has crashed:")
-        #     print("> {}\033[0m\n".format(e))
-        #     traceback.print_exc()
-
-        #     crash_message = "Agent crashed"
-
-        # except Exception as e:
-        #     print("\n\033[91mError during the simulation:")
-        #     print("> {}\033[0m\n".format(e))
-        #     traceback.print_exc()
-
-        #     crash_message = "Simulation crashed"
-        #     entry_status = "Crashed"
-
-        # Stop the scenario
         try:
             print("\033[1m> Stopping the route\033[0m")
             self.manager.stop_scenario()
@@ -462,14 +491,70 @@ class TestCase(object):
             crash_message = "Simulation crashed"
 
         if crash_message == "Simulation crashed":
+            print('***Simulation crashed***')
             sys.exit(-1)
+
+    def _get_road(self, current_map, current_waypoint, gap = 3):
+        '''
+        Provide a waypoint, return all waypoints on this straight road (section bewteen 2 junctions)
+        '''
+        road = [current_waypoint]
+
+        pre_waypoint = current_waypoint
+        while True:
+            pre_waypoint = pre_waypoint.previous(gap)
+            if not pre_waypoint:
+                break
+            elif pre_waypoint[-1].is_junction:
+                break
+            else:
+                pre_waypoint = pre_waypoint[-1]
+                road.append(pre_waypoint)
+        road.reverse()
+
+        next_waypoint = current_waypoint
+        while True:
+            next_waypoint = next_waypoint.next(gap)
+            if not next_waypoint:
+                break
+            elif next_waypoint[-1].is_junction:
+                break
+            else:
+                next_waypoint = next_waypoint[-1]
+                road.append(next_waypoint)
+
+        return road
+ 
+
+    def _draw_road(self, world, current_waypoint, road, vertical_shift, persistency=-1):
+        """
+        Draw a list of waypoints at a certain height given in vertical_shift.
+        """
+        for w in road:
+            wp = w.transform.location + carla.Location(z=vertical_shift)
+            color = carla.Color(0, 255, 0) # Green
+            size = 0.1
+
+            world.debug.draw_point(wp, size=size, color=color, life_time=persistency)
+
+        world.debug.draw_point(current_waypoint.transform.location + carla.Location(z=vertical_shift), size=0.15,
+                                color=carla.Color(0, 0, 255), life_time=persistency)
+        world.debug.draw_point(road[0].transform.location + carla.Location(z=vertical_shift), size=0.3,
+                                color=carla.Color(0, 0, 255), life_time=persistency)
+        world.debug.draw_point(road[-1].transform.location + carla.Location(z=vertical_shift), size=0.2,
+                                color=carla.Color(255, 0, 0), life_time=persistency)
+
 
     def log_xml(self, args, config, vehicles, waypoints):
         parser = EXParser(args.fitness_path.replace('fitness.csv','log.xml'))
         new_setting = parser.addSetting('1', config.town, args.agent_mode)
         parser.addWeather(new_setting, config.weather)
         for i, vehicle in enumerate(vehicles):
-            parser.addVehicle(new_setting,str(vehicle.id),vehicle.type_id,waypoints[i])
+            print(i,vehicle)
+            if i-1 <= len(waypoints):
+                parser.addVehicle(new_setting,str(vehicle.id),vehicle.type_id,waypoints[i])
+            else:
+                parser.addVehicle(new_setting,str(vehicle.id),vehicle.type_id,[])
         parser.update()
 
 
@@ -502,38 +587,6 @@ class TestCase(object):
             waypoints.append(new_location)
             last_x, last_y = x, y
      
-        # mod = 0
-        # if mod == 0: #Straight
-        #     for i in range(60):
-        #         new_location = carla.Location(start_location.x + i*1, start_location.y, start_location.z)
-        #         waypoints.append(new_location)
-        # if mod == 1: #Wave
-        #     for i in range(60):
-        #         new_location = carla.Location(start_location.x + i*1, start_location.y-(abs(i%14-7))*0.3, start_location.z)
-        #         waypoints.append(new_location)		
-        # if mod == 2: #Collision
-        #     for i in range(60):
-        #         new_location = carla.Location(start_location.x + i*1, start_location.y+((abs(i%60-30)-30)/30)*5, start_location.z)
-        #         waypoints.append(new_location)
-        # if mod == 3: #TurnLeft
-        #     for i in range(60):
-        #         if i <= 15:
-        #             new_location = carla.Location(waypoints[-1].x + 1, waypoints[-1].y, waypoints[-1].z)
-        #         elif i <= 20:
-        #             new_location = carla.Location(waypoints[-1].x + 1, waypoints[-1].y - 1, waypoints[-1].z)
-        #         else:
-        #             new_location = carla.Location(waypoints[-1].x, waypoints[-1].y - 1, waypoints[-1].z)
-        #         waypoints.append(new_location)
-        # if mod == 4: #TurnLeft-LessPoint
-        #         waypoints.append(carla.Location(waypoints[-1].x + 5, waypoints[-1].y, waypoints[-1].z))
-        #         waypoints.append(carla.Location(waypoints[-1].x + 5, waypoints[-1].y, waypoints[-1].z))
-        #         waypoints.append(carla.Location(waypoints[-1].x + 5, waypoints[-1].y, waypoints[-1].z))
-        #         waypoints.append(carla.Location(waypoints[-1].x + 5, waypoints[-1].y, waypoints[-1].z))
-        #         waypoints.append(carla.Location(waypoints[-1].x, waypoints[-1].y-5, waypoints[-1].z))
-        #         waypoints.append(carla.Location(waypoints[-1].x, waypoints[-1].y-5, waypoints[-1].z))
-        #         waypoints.append(carla.Location(waypoints[-1].x, waypoints[-1].y-5, waypoints[-1].z))
-        #         waypoints.append(carla.Location(waypoints[-1].x, waypoints[-1].y-5, waypoints[-1].z))
-
         return waypoints
 
     def run(self, args):
@@ -559,15 +612,11 @@ class TestCase(object):
             # currently xml doesot include vehicle and other information
             # thus config doesnot include them
 
+            config.weather_vec = [random.random() for i in range(9)]
+            config.weather = weather_parser(config.weather_vec)
+            print(config.weather)
             # run
             self._load_and_run_scenario(args, config)
-
-            # for obj in gc.get_objects():
-            #     try:
-            #         if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
-            #             print(type(obj), obj.size())
-            #     except:
-            #         pass
 
             route_indexer.save_state(args.checkpoint)
 
@@ -632,8 +681,14 @@ def main():
 
     try:
         print("begin")
-        leaderboard_evaluator = LeaderboardEvaluator(arguments, statistics_manager)
+        leaderboard_evaluator = TestCase(arguments, statistics_manager)
         leaderboard_evaluator.run(arguments)
+
+
+
+
+
+
 
     except Exception as e:
         traceback.print_exc()

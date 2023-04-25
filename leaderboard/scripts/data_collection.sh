@@ -32,7 +32,24 @@ export SAVE_PATH=data/${ROUTE_FILE}_${current_time}/
 
 # export RECORD_PATH=./
 
-python3 ${LEADERBOARD_ROOT}/leaderboard/leaderboard_evaluator.py \
+# python3 ${LEADERBOARD_ROOT}/leaderboard/leaderboard_evaluator.py \
+# --scenarios=${SCENARIOS}  \
+# --routes=${ROUTES} \
+# --repetitions=${REPETITIONS} \
+# --track=${CHALLENGE_TRACK_CODENAME} \
+# --checkpoint=${CHECKPOINT_ENDPOINT} \
+# --agent=${TEAM_AGENT} \
+# --agent-config=${TEAM_CONFIG} \
+# --debug=${DEBUG_CHALLENGE} \
+# --record=${RECORD_PATH} \
+# --resume=${RESUME} \
+# --port=${PORT} \
+# --fitness_path=${SAVE_PATH}/fitness.csv \
+# --agent_mode=${AGENT_MODE} \
+# --trafficManagerPort=${TM_PORT}
+
+
+python3 ${LEADERBOARD_ROOT}/leaderboard/run_one_case.py \
 --scenarios=${SCENARIOS}  \
 --routes=${ROUTES} \
 --repetitions=${REPETITIONS} \
