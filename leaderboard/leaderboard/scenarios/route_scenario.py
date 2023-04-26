@@ -201,7 +201,7 @@ class RouteScenario(BasicScenario):
 			self.other_actors_transforms = [actor_transform]
 		elif self.agent_mod == 0:
 			self.other_actors_transforms = [waypoint.transform for waypoint in kwargs['start_waypoint']]
-
+			self.numb_other_vehicle = kwargs['numb_other_vehicle']
 
 		self._update_route(world, config, debug_mode>0)
 
@@ -329,6 +329,9 @@ class RouteScenario(BasicScenario):
 		ego_trans = ego_vehicle.get_transform()
 		spectator.set_transform(carla.Transform(ego_trans.location + carla.Location(z=50),
 													carla.Rotation(pitch=-90)))
+		#Change the view of simu, scenario_manager.py
+		# spectator.set_transform(carla.Transform(ego_trans.location + carla.Location(z=5),
+		# 											carla.Rotation(pitch=-20,yaw=90)))
 
 		return ego_vehicle
 
@@ -587,14 +590,13 @@ class RouteScenario(BasicScenario):
 			self.other_actors.append(other_vehicle)
 			
 		elif self.agent_mod == 0:
-			elevate_transform = self.other_actors_transforms[0]
-			elevate_transform.location.z = 0.3
-			print('++route_scenario', elevate_transform)
+			for transform in self.other_actors_transforms:
+				transform.location.z = 0.3
 
 			# amount = town_amount[config.town] if config.town in town_amount else 0
 			new_actors = CarlaDataProvider.request_new_batch_actors('vehicle.*',
-														1,
-														[elevate_transform],
+														self.numb_other_vehicle,
+														self.other_actors_transforms,
 														autopilot=True,
 														random_location=False,
 														rolename='background')

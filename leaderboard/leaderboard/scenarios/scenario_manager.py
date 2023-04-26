@@ -178,6 +178,10 @@ class ScenarioManager(object):
             ego_trans = self.ego_vehicles[0].get_transform()
             spectator.set_transform(carla.Transform(ego_trans.location + carla.Location(z=50),
                                                         carla.Rotation(pitch=-90)))
+            #Change the view of simu
+            # spectator.set_transform(carla.Transform(ego_trans.location + carla.Location(z=5),
+            #                                             carla.Rotation(pitch=-20,yaw=90,)))
+
 
         if self._running and self.get_running_status():
             CarlaDataProvider.get_world().tick(self._timeout)

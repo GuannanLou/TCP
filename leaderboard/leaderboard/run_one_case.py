@@ -273,8 +273,6 @@ class TestCase(object):
         CarlaDataProvider.set_client(self.client)
         CarlaDataProvider.set_world(self.world)
         CarlaDataProvider.set_traffic_manager_port(int(args.trafficManagerPort))
-
-        print(weather)
         CarlaDataProvider.set_weather(weather)
 
         self.traffic_manager.set_synchronous_mode(True)
@@ -382,49 +380,82 @@ class TestCase(object):
             elif args.agent_mode == 0:
                 start_location, end_location = config.trajectory
                 current_map = CarlaDataProvider.get_map()
+
+                # print('+++++++++++++++++')
+                # all_roads = current_map.get_topology() 
+                # print(len(all_roads))
+                # print('  Road     Lane |     x        y   |     x        y   |        yaw       ')
+                # print('-------------------------------------------------------------------------')
+                # for start, end in all_roads:
+                #     print('{:4} {:4} {:2} {:2} | {:7.2f}, {:7.2f} | {:7.2f}, {:7.2f} | {:7.2f}, {:7.2f} '.format(start.road_id, end.road_id, 
+                #                                         start.lane_id, end.lane_id, 
+                #                                         start.transform.location.x, start.transform.location.y, 
+                #                                         end.transform.location.x, end.transform.location.y,
+                #                                         start.transform.rotation.yaw, end.transform.rotation.yaw))
+                #     # self._get_road_from_start(start)
+                # print('+++++++++++++++++')
+
+                # # Print all roads
+                # for start, end in all_roads:
+                #     road = self._get_road_from_start(start)
+                #     self._draw_road(self.world, start, road, 
+                #                     vertical_shift=1.0, persistency=50000.0)
+
                 current_waypoint = current_map.get_waypoint(start_location)
 
                 numb_other_vehicle = 0
                 waypoint_other_vehicle = []
 
                 if config.vehicle_infront:
-                    numb_other_vehicle += 1
-                    test_waypoint = current_waypoint.next(2)[-1]
-                    print('----VEHICLE-INFRONT----')
-                    print('##current vehicle:', current_waypoint)
-                    print('####other vehicle:', test_waypoint)
+                    test_waypoint = current_waypoint.next(7)[-1]
 
-                    waypoint_other_vehicle.append(test_waypoint)
+                    if test_waypoint:
+                        numb_other_vehicle += 1
+                        print('----VEHICLE-INFRONT----')
+                        print('##current vehicle:', current_waypoint)
+                        print('####other vehicle:', test_waypoint)
+
+                        waypoint_other_vehicle.append(test_waypoint)
+                    else:
+                        print("!!!!! Add vehicle infront failed")
 
                 if config.vehicle_side:
-                    numb_other_vehicle += 1
                     test_waypoint = current_waypoint.get_right_lane()
-                    print('------VEHICLE-SIDE-----')
-                    print('##current vehicle:', current_waypoint)
-                    print('####other vehicle:', test_waypoint)
 
-                    road = self._get_road(current_map, test_waypoint)
-                    road_start = road[0]
+                    if test_waypoint:
+                        numb_other_vehicle += 1
+                        print('------VEHICLE-SIDE-----')
+                        print('##current vehicle:', current_waypoint)
+                        print('####other vehicle:', test_waypoint)
 
-                    waypoint_other_vehicle.append(road_start)
-                    # self._draw_road(self.world, test_waypoint, road, 
-                    #             vertical_shift=1.0, persistency=50000.0)
+                        road = self._get_road(test_waypoint)
+                        road_start = road[0]
+
+                        waypoint_other_vehicle.append(road_start)
+                        # self._draw_road(self.world, test_waypoint, road, 
+                        #             vertical_shift=1.0, persistency=50000.0)
+                    else:
+                        print("!!!!! Add vehicle in side lane failed")
                     
                 if config.vehicle_opposite:
-                    numb_other_vehicle += 1
-                    test_waypoint = current_waypoint.get_left_lane()
-                    print('----VEHICLE-OPPOSITE---')
-                    print('##current vehicle:', current_waypoint)
-                    print('####other vehicle:', test_waypoint)
+                    test_waypoint = current_waypoint.get_left_lane().get_right_lane()
 
-                    road = self._get_road(current_map, test_waypoint)
+                    if test_waypoint:
+                        numb_other_vehicle += 1
+                        print('----VEHICLE-OPPOSITE---')
+                        print('##current vehicle:', current_waypoint)
+                        print('####other vehicle:', test_waypoint)
 
-                    road_end = road[-1]
-                    road_start = road[0]
+                        road = self._get_road(test_waypoint)
 
-                    waypoint_other_vehicle.append(road_start)
-                    # self._draw_road(self.world, test_waypoint, road, 
-                    #                 vertical_shift=1.0, persistency=50000.0)
+                        road_end = road[-1]
+                        road_start = road[0]
+
+                        waypoint_other_vehicle.append(road_start)
+                        # self._draw_road(self.world, test_waypoint, road, 
+                        #                 vertical_shift=1.0, persistency=50000.0)
+                    else:
+                        print("!!!!! Add vehicle in opposite lane failed")
 
                 scenario = RouteScenario(world=self.world, 
                                          config=config, 
@@ -494,7 +525,7 @@ class TestCase(object):
             print('***Simulation crashed***')
             sys.exit(-1)
 
-    def _get_road(self, current_map, current_waypoint, gap = 3):
+    def _get_road(self, current_waypoint, gap = 3):
         '''
         Provide a waypoint, return all waypoints on this straight road (section bewteen 2 junctions)
         '''
@@ -521,6 +552,31 @@ class TestCase(object):
                 break
             else:
                 next_waypoint = next_waypoint[-1]
+                road.append(next_waypoint)
+
+        return road
+    
+    def _get_road_from_start(self, start, gap = 3):
+        '''
+        Provide a waypoint, return all waypoints on this straight road (section bewteen 2 junctions)
+        '''
+        road = [start]
+
+        next_waypoint = start
+        while True:
+            next_waypoint = next_waypoint.next(gap)
+            if not next_waypoint: # end of road
+                break
+            next_waypoint = next_waypoint[-1]
+            x_same = next_waypoint.transform.location.x == start.transform.location.x
+            y_same = next_waypoint.transform.location.y == start.transform.location.y
+            z_same = next_waypoint.transform.location.z == start.transform.location.z
+            
+            if x_same & y_same & z_same: # road loop
+                break
+            elif next_waypoint.road_id != start.road_id:
+                break
+            else:
                 road.append(next_waypoint)
 
         return road
@@ -611,10 +667,13 @@ class TestCase(object):
             # config get here just include the settings from the xml
             # currently xml doesot include vehicle and other information
             # thus config doesnot include them
-
+            config.vehicle_infront = True
+            config.vehicle_opposite = True
+            config.vehicle_side = True
             config.weather_vec = [random.random() for i in range(9)]
+            config.weather_vec[-1] = 0
+            config.weather_vec[-3] = 0
             config.weather = weather_parser(config.weather_vec)
-            print(config.weather)
             # run
             self._load_and_run_scenario(args, config)
 

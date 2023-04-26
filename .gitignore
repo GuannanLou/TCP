@@ -6,3 +6,5 @@ data/*
 **/__pycache__/*
 
 
+leaderboard/leaderboard/scenarios/__pycache__/route_scenario.cpython-37.pyc
+leaderboard/leaderboard/scenarios/__pycache__/scenario_manager.cpython-37.pyc
