@@ -78,32 +78,6 @@ WEATHERS = {
         'SoftRainSunset': carla.WeatherParameters.SoftRainSunset,
 }
 
-
-def weather_parser(weather_vec):
-    '''
-    Converts a 9-length array of 0-1 numbers to a CARLA weather parameter object.
-
-    Args:
-        weather_vec (list): a 9-length array of 0-1 numbers
-    
-    Returns:
-        carla.WeatherParameters
-    '''
-    c, p, pd, wi, sz, sl, fd, w, ff = weather_vec 
-        
-    return carla.WeatherParameters(
-        cloudiness=c*100, 
-        precipitation=p*100, 
-        precipitation_deposits=pd*100, 
-        wind_intensity=wi*100, 
-        sun_azimuth_angle=sz*360, 
-        sun_altitude_angle=sl*180-90, 
-        fog_density=fd*100, 
-        wetness=w*100, 
-        fog_falloff=ff*5
-    )
-
-
 class TestCase(object):
     ego_vehicles = []
 
@@ -412,8 +386,8 @@ class TestCase(object):
                     if test_waypoint:
                         numb_other_vehicle += 1
                         print('----VEHICLE-INFRONT----')
-                        print('##current vehicle:', current_waypoint)
-                        print('####other vehicle:', test_waypoint)
+                        # print('##current vehicle:', current_waypoint)
+                        # print('####other vehicle:', test_waypoint)
 
                         waypoint_other_vehicle.append(test_waypoint)
                     else:
@@ -424,9 +398,9 @@ class TestCase(object):
 
                     if test_waypoint:
                         numb_other_vehicle += 1
-                        print('------VEHICLE-SIDE-----')
-                        print('##current vehicle:', current_waypoint)
-                        print('####other vehicle:', test_waypoint)
+                        print('----VEHICLE-SIDE-------')
+                        # print('##current vehicle:', current_waypoint)
+                        # print('####other vehicle:', test_waypoint)
 
                         road = self._get_road(test_waypoint)
                         road_start = road[0]
@@ -438,13 +412,21 @@ class TestCase(object):
                         print("!!!!! Add vehicle in side lane failed")
                     
                 if config.vehicle_opposite:
-                    test_waypoint = current_waypoint.get_left_lane().get_right_lane()
+                    test_waypoint = current_waypoint.get_left_lane()
+                    
+                    while True:
+                        if not test_waypoint:
+                            break
+                        if test_waypoint.lane_id > 0 == current_waypoint.lane_id > 0: 
+                            test_waypoint = test_waypoint.get_right_lane()
+                        else:
+                            break
 
                     if test_waypoint:
                         numb_other_vehicle += 1
                         print('----VEHICLE-OPPOSITE---')
-                        print('##current vehicle:', current_waypoint)
-                        print('####other vehicle:', test_waypoint)
+                        # print('##current vehicle:', current_waypoint)
+                        # print('####other vehicle:', test_waypoint)
 
                         road = self._get_road(test_waypoint)
 
@@ -664,26 +646,107 @@ class TestCase(object):
         while route_indexer.peek():
             # setup
             config = route_indexer.next()
+
+            # for attr in dir(config):
+            # 	if not attr.startswith('__'):
+            #         if attr != 'trajectory':
+            #             print('\033[92m>{}\033[0m      	  \t| {}'.format(attr, getattr(config, attr)))
+            #         else:
+            #             for item in getattr(config, attr):
+            #                 print('\033[92m>{}\033[0m      	  \t| {}'.format(attr, item))
             # config get here just include the settings from the xml
             # currently xml doesot include vehicle and other information
             # thus config doesnot include them
-            config.vehicle_infront = True
-            config.vehicle_opposite = True
-            config.vehicle_side = True
-            config.weather_vec = [random.random() for i in range(9)]
-            config.weather_vec[-1] = 0
-            config.weather_vec[-3] = 0
-            config.weather = weather_parser(config.weather_vec)
-            # run
-            self._load_and_run_scenario(args, config)
 
-            route_indexer.save_state(args.checkpoint)
+            import numpy as np
+            
+            scenario_vecs = np.random.rand(20, 9+3+4)
+            # 9 weather, 3 other vehicle, 4 position
+
+            for i, scenario_vec in enumerate(scenario_vecs):
+                config.repetition_index = i
+                print()
+                start_time = time.time() 
+                print('SCENARIO:',scenario_vec)
+
+                config.weather_vec = scenario_vec[0:9]
+                config.other_vehicle_vec = scenario_vec[9:9+3]
+                config.ego_vehicle_vec = scenario_vec[9+3:9+3+4]
+
+                config.trajectory = ego_vehicle_parser(config.trajectory, config.ego_vehicle_vec)
+                config.vehicle_infront, config.vehicle_opposite, config.vehicle_side = other_vehicle_parser(config.other_vehicle_vec)
+                config.weather = weather_parser(config.weather_vec)
+                print()
+                print(config.weather)
+                print(config.trajectory[0], config.trajectory[1])
+                print(config.vehicle_infront, config.vehicle_opposite, config.vehicle_side)
+
+                # run
+                self._load_and_run_scenario(args, config)
+
+                route_indexer.save_state(args.checkpoint)
+
+                end_time = time.time()
+                elapsed_time = end_time - start_time 
+                print(f"函数执行时间为: {elapsed_time:.2f}秒")
 
         # save global statistics
         print("\033[1m> Registering the global statistics\033[0m")
         global_stats_record = self.statistics_manager.compute_global_statistics(route_indexer.total)
         StatisticsManager.save_global_record(global_stats_record, self.sensor_icons, route_indexer.total, args.checkpoint)
 
+
+def ego_vehicle_parser(trajectory, ego_vehicle_vec):
+    start_location, end_location = trajectory
+    start_x, start_y, end_x, end_y = ego_vehicle_vec 
+    x_range = 2
+    y_range = 2
+
+    new_start_location = carla.Location(x=start_location.x+start_x*2*x_range-x_range, 
+                                        y=start_location.y+start_y*2*y_range-y_range,
+                                        z=start_location.z)
+    new_end_location = carla.Location(x=end_location.x+end_x*2*x_range-x_range, 
+                                      y=end_location.y+end_y*2*y_range-y_range,
+                                      z=end_location.z)
+
+    return [new_start_location, new_end_location]
+
+
+
+def other_vehicle_parser(other_vehicle_vec):
+    result = [] 
+    for flag in other_vehicle_vec:
+        if flag >= 0.5:
+            result.append(True)
+        else:
+            result.append(False)
+        
+    return result
+
+
+
+def weather_parser(weather_vec):
+    '''
+    Converts a 9-length array of 0-1 numbers to a CARLA weather parameter object.
+
+    Args:
+        weather_vec (list): a 9-length array of 0-1 numbers
+    
+    Returns:
+        carla.WeatherParameters
+    '''
+    c, p, pd, wi, sz, sl, fd, w, ff = weather_vec 
+    return carla.WeatherParameters(
+        cloudiness              = 0 if c  < 0.5 else (c -0.5)*2*100, 
+        precipitation           = 0 if p  < 0.5 else (p -0.5)*2*100, 
+        precipitation_deposits  = 0 if pd < 0.5 else (pd-0.5)*2*100, 
+        wind_intensity          = 0 if wi < 0.5 else (wi-0.5)*2*100, 
+        sun_azimuth_angle       = 0 if sz < 0.5 else (sz-0.5)*2*360, 
+        sun_altitude_angle      = 0 if sl < 0.5 else (sl-0.5)*2*180-90, 
+        fog_density             = 0 if fd < 0.5 else (fd-0.5)*2*100, 
+        wetness                 = 0 if w  < 0.5 else (w -0.5)*2*100, 
+        fog_falloff             = 0 if ff < 0.5 else (ff-0.5)*2*5
+    )
 
 def main():
     description = "CARLA AD Leaderboard Evaluation: evaluate your Agent in CARLA scenarios\n"
