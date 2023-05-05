@@ -613,7 +613,6 @@ class TestCase(object):
         parser.update()
 
 
-
     def get_waypoints(self, start_location):
         
         actor_location = carla.Location(start_location.x - 55,
@@ -648,9 +647,7 @@ class TestCase(object):
         """
         Run the challenge mode
         """
-        # agent_class_name = getattr(self.module_agent, 'get_entry_point')()
-        # self.agent_instance = getattr(self.module_agent, agent_class_name)(args.agent_config)
-        
+
         route_indexer = RouteIndexer(args.routes, args.scenarios, args.repetitions)
 
         if args.resume:
@@ -690,8 +687,6 @@ class TestCase(object):
                 config.other_vehicle_vec = scenario_vec[9:9+3]
                 config.ego_vehicle_vec = scenario_vec[9+3:9+3+2] #update should be later, as we donot have map in it
                 
-                config.other_vehicle_vec = 1, 1, 1
-
                 # config.trajectory = ego_vehicle_parser(config.trajectory, config.ego_vehicle_vec)
                 config.vehicle_infront, config.vehicle_opposite, config.vehicle_side = other_vehicle_parser(config.other_vehicle_vec)
                 config.weather = weather_parser(config.weather_vec)
@@ -720,8 +715,6 @@ class TestCase(object):
 
 
 def ego_vehicle_parser(trajectory, ego_vehicle_vec, current_map, offset_range = 50):
-    ego_vehicle_vec = [0, 1]
-
     # start_location, end_location = trajectory
     result = []
     for i, location in enumerate(trajectory):
@@ -757,20 +750,6 @@ def ego_vehicle_parser(trajectory, ego_vehicle_vec, current_map, offset_range = 
         result.append(new_location)
 
     return result
-
-    
-    
-
-
-    # new_start_location = carla.Location(x=start_location.x+start_x*2*x_range-x_range, 
-    #                                     y=start_location.y+start_y*2*y_range-y_range,
-    #                                     z=start_location.z)
-    # new_end_location = carla.Location(x=end_location.x+end_x*2*x_range-x_range, 
-    #                                   y=end_location.y+end_y*2*y_range-y_range,
-    #                                   z=end_location.z)
-
-    # return [new_start_location, new_end_location]
-
 
 
 def other_vehicle_parser(other_vehicle_vec):
