@@ -348,7 +348,7 @@ class TestCase(object):
             # Change the start and end position of the ego-vehicle
             current_map = CarlaDataProvider.get_map()
             # start_location, end_location = config.trajectory
-            config.trajectory = ego_vehicle_parser(config.trajectory, config.ego_vehicle_vec, current_map)
+            config.trajectory = ego_vehicle_parser(config.original_trajectory, config.ego_vehicle_vec, current_map)
             # ego_vehicle_parser(config.trajectory, config.ego_vehicle_vec, current_map)
             start_location, end_location = config.trajectory
 
@@ -671,8 +671,11 @@ class TestCase(object):
 
             import numpy as np
             
-            scenario_vecs = np.random.rand(100, 9+3+2)
+            scenario_vecs = np.random.rand(2, 9+3+2)
             # 9 weather, 3 other vehicle, 2 position offset
+
+            config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
+
 
             for i, scenario_vec in enumerate(scenario_vecs):
                 config.repetition_index = i
@@ -684,7 +687,6 @@ class TestCase(object):
                 config.other_vehicle_vec = scenario_vec[9:9+3]
                 config.ego_vehicle_vec = scenario_vec[9+3:9+3+2] #update should be later, as we donot have map in it
                 
-                # config.trajectory = ego_vehicle_parser(config.trajectory, config.ego_vehicle_vec)
                 config.vehicle_infront, config.vehicle_opposite, config.vehicle_side = other_vehicle_parser(config.other_vehicle_vec)
                 config.weather = weather_parser(config.weather_vec)
                 print()
