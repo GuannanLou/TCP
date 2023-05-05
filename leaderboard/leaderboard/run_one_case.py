@@ -192,7 +192,6 @@ class TestCase(object):
         """
 
         if not wait_for_ego_vehicles:
-            print('_prepare_ego_vehicles',1)
             for vehicle in ego_vehicles:
                 self.ego_vehicles.append(CarlaDataProvider.request_new_actor(vehicle.model,
                                                                              vehicle.transform,
@@ -201,7 +200,6 @@ class TestCase(object):
                                                                              vehicle_category=vehicle.category))
 
         else:
-            print('_prepare_ego_vehicles',2)
             ego_vehicle_missing = True
             while ego_vehicle_missing:
                 self.ego_vehicles = []
@@ -495,8 +493,7 @@ class TestCase(object):
 
         print("\033[1m> Running the route\033[0m")
         traffic_manager = CarlaDataProvider.get_client().get_trafficmanager(CarlaDataProvider.get_traffic_manager_port()) 
-        traffic_manager.global_percentage_speed_difference(-50) # SPEED. base speed 30 km/h, increased by 50%
-
+        traffic_manager.global_percentage_speed_difference(-75) # SPEED. base speed 30 km/h, increased by 50%
 
         self.manager.run_scenario()
 
@@ -674,8 +671,8 @@ class TestCase(object):
 
             import numpy as np
             
-            scenario_vecs = np.random.rand(1, 9+3+4)
-            # 9 weather, 3 other vehicle, 4 position
+            scenario_vecs = np.random.rand(100, 9+3+2)
+            # 9 weather, 3 other vehicle, 2 position offset
 
             for i, scenario_vec in enumerate(scenario_vecs):
                 config.repetition_index = i
@@ -706,7 +703,7 @@ class TestCase(object):
                 vec_writer.close()
                 end_time = time.time()
                 elapsed_time = end_time - start_time 
-                print(f"函数执行时间为: {elapsed_time:.2f}秒")
+                print(f"Processing Time: {elapsed_time:.2f} seconds")
 
         # save global statistics
         print("\033[1m> Registering the global statistics\033[0m")
@@ -723,10 +720,10 @@ def ego_vehicle_parser(trajectory, ego_vehicle_vec, current_map, offset_range = 
         offset = ego_vehicle_vec[i]
         start_direction = waypoint.transform.rotation.yaw % 360
 
-        print(waypoint.transform.location)
-        print('direction :', start_direction, waypoint.transform.rotation.yaw)
-        print('offset_vec:', offset)
-        print('offset    :', offset*offset_range - offset_range/2)
+        # print(waypoint.transform.location)
+        # print('direction :', start_direction, waypoint.transform.rotation.yaw)
+        # print('offset_vec:', offset)
+        # print('offset    :', offset*offset_range - offset_range/2)
 
         if start_direction > 315 or start_direction < 45:
             new_location = carla.Location(x = location.x + offset*offset_range - offset_range/2,
@@ -744,9 +741,9 @@ def ego_vehicle_parser(trajectory, ego_vehicle_vec, current_map, offset_range = 
             new_location = carla.Location(x = location.x,
                                           y = location.y + offset*offset_range - offset_range/2,
                                           z = location.z)
-        print('Old:', location)
-        print('New:', new_location)
-        print()
+        # print('Old:', location)
+        # print('New:', new_location)
+        # print()
         result.append(new_location)
 
     return result
