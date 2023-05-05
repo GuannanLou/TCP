@@ -618,6 +618,10 @@ class RouteScenario(BasicScenario):
 				raise Exception("Error: Unable to add the background activity, all spawn points were occupied")
 
 			for _actor in new_actors:
+				# _actor.apply_ackermann_control(carla.VehicleAckermannControl(speed=60*1000/3600))
+				# traffic_manager = CarlaDataProvider.get_client().get_trafficmanager(CarlaDataProvider.get_traffic_manager_port()) 
+				# traffic_manager.global_percentage_speed_difference(-50)
+
 				self.other_actors.append(_actor)
 
 

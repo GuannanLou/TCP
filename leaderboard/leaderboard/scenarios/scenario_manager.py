@@ -134,6 +134,8 @@ class ScenarioManager(object):
                 snapshot = world.get_snapshot()
                 if snapshot:
                     timestamp = snapshot.timestamp
+                    # traffic_manager = CarlaDataProvider.get_client().get_trafficmanager(CarlaDataProvider.get_traffic_manager_port()) 
+                    # traffic_manager.global_percentage_speed_difference(-50)
             if timestamp:
                 self._tick_scenario(timestamp)
 

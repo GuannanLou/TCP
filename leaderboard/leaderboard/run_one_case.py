@@ -192,6 +192,7 @@ class TestCase(object):
         """
 
         if not wait_for_ego_vehicles:
+            print('_prepare_ego_vehicles',1)
             for vehicle in ego_vehicles:
                 self.ego_vehicles.append(CarlaDataProvider.request_new_actor(vehicle.model,
                                                                              vehicle.transform,
@@ -200,6 +201,7 @@ class TestCase(object):
                                                                              vehicle_category=vehicle.category))
 
         else:
+            print('_prepare_ego_vehicles',2)
             ego_vehicle_missing = True
             while ego_vehicle_missing:
                 self.ego_vehicles = []
@@ -345,14 +347,20 @@ class TestCase(object):
             self._load_and_wait_for_world(args, config.town, config.weather)
             self._prepare_ego_vehicles(config.ego_vehicles, False) # Other vehichle is still not added into the scneario
             
+            # Change the start and end position of the ego-vehicle
+            current_map = CarlaDataProvider.get_map()
+            # start_location, end_location = config.trajectory
+            config.trajectory = ego_vehicle_parser(config.trajectory, config.ego_vehicle_vec, current_map)
+            # ego_vehicle_parser(config.trajectory, config.ego_vehicle_vec, current_map)
+            start_location, end_location = config.trajectory
+
+
             scenario = None
             if args.agent_mode == 1:
                 print("AGENT_MODE == 1")
-                start_location, end_location = config.trajectory
                 waypoints = self.get_waypoints(start_location)
                 scenario = RouteScenario(world=self.world, config=config, debug_mode=args.debug, agent_mode=args.agent_mode, waypoints=waypoints)# add vehicle in this line
             elif args.agent_mode == 0:
-                start_location, end_location = config.trajectory
                 current_map = CarlaDataProvider.get_map()
 
                 # print('+++++++++++++++++')
@@ -415,8 +423,14 @@ class TestCase(object):
                     test_waypoint = current_waypoint.get_left_lane()
                     
                     while True:
+                        # print(test_waypoint.lane_type, type(test_waypoint.lane_type))
+                        # print(test_waypoint.lane_id, current_waypoint.lane_id)
+                        # print(test_waypoint.lane_type, current_waypoint.lane_type)
                         if not test_waypoint:
                             break
+                        if test_waypoint.lane_type == carla.LaneType.Bidirectional:
+                            # print(carla.LaneType.Bidirectional)
+                            test_waypoint = test_waypoint.get_right_lane()
                         if test_waypoint.lane_id > 0 == current_waypoint.lane_id > 0: 
                             test_waypoint = test_waypoint.get_right_lane()
                         else:
@@ -480,6 +494,9 @@ class TestCase(object):
             sys.exit(-1)
 
         print("\033[1m> Running the route\033[0m")
+        traffic_manager = CarlaDataProvider.get_client().get_trafficmanager(CarlaDataProvider.get_traffic_manager_port()) 
+        traffic_manager.global_percentage_speed_difference(-50) # SPEED. base speed 30 km/h, increased by 50%
+
 
         self.manager.run_scenario()
 
@@ -660,32 +677,38 @@ class TestCase(object):
 
             import numpy as np
             
-            scenario_vecs = np.random.rand(20, 9+3+4)
+            scenario_vecs = np.random.rand(1, 9+3+4)
             # 9 weather, 3 other vehicle, 4 position
 
             for i, scenario_vec in enumerate(scenario_vecs):
                 config.repetition_index = i
                 print()
                 start_time = time.time() 
-                print('SCENARIO:',scenario_vec)
+                print('SCENARIO:',[round(vec,2) for vec in scenario_vec])
 
                 config.weather_vec = scenario_vec[0:9]
                 config.other_vehicle_vec = scenario_vec[9:9+3]
-                config.ego_vehicle_vec = scenario_vec[9+3:9+3+4]
+                config.ego_vehicle_vec = scenario_vec[9+3:9+3+2] #update should be later, as we donot have map in it
+                
+                config.other_vehicle_vec = 1, 1, 1
 
-                config.trajectory = ego_vehicle_parser(config.trajectory, config.ego_vehicle_vec)
+                # config.trajectory = ego_vehicle_parser(config.trajectory, config.ego_vehicle_vec)
                 config.vehicle_infront, config.vehicle_opposite, config.vehicle_side = other_vehicle_parser(config.other_vehicle_vec)
                 config.weather = weather_parser(config.weather_vec)
                 print()
-                print(config.weather)
-                print(config.trajectory[0], config.trajectory[1])
-                print(config.vehicle_infront, config.vehicle_opposite, config.vehicle_side)
+                # print(config.weather)
+                print('Start:', config.trajectory[0])
+                print('End  :', config.trajectory[1])
+                # print(config.vehicle_infront, config.vehicle_opposite, config.vehicle_side)
 
                 # run
                 self._load_and_run_scenario(args, config)
 
                 route_indexer.save_state(args.checkpoint)
 
+                vec_writer = open(args.fitness_path.replace('fitness.csv','scenario.csv'),'a')
+                vec_writer.write(','.join([str(vec) for vec in scenario_vec])+'\n')
+                vec_writer.close()
                 end_time = time.time()
                 elapsed_time = end_time - start_time 
                 print(f"函数执行时间为: {elapsed_time:.2f}秒")
@@ -696,20 +719,57 @@ class TestCase(object):
         StatisticsManager.save_global_record(global_stats_record, self.sensor_icons, route_indexer.total, args.checkpoint)
 
 
-def ego_vehicle_parser(trajectory, ego_vehicle_vec):
-    start_location, end_location = trajectory
-    start_x, start_y, end_x, end_y = ego_vehicle_vec 
-    x_range = 2
-    y_range = 2
+def ego_vehicle_parser(trajectory, ego_vehicle_vec, current_map, offset_range = 50):
+    ego_vehicle_vec = [0, 1]
 
-    new_start_location = carla.Location(x=start_location.x+start_x*2*x_range-x_range, 
-                                        y=start_location.y+start_y*2*y_range-y_range,
-                                        z=start_location.z)
-    new_end_location = carla.Location(x=end_location.x+end_x*2*x_range-x_range, 
-                                      y=end_location.y+end_y*2*y_range-y_range,
-                                      z=end_location.z)
+    # start_location, end_location = trajectory
+    result = []
+    for i, location in enumerate(trajectory):
 
-    return [new_start_location, new_end_location]
+        waypoint = current_map.get_waypoint(location)
+        offset = ego_vehicle_vec[i]
+        start_direction = waypoint.transform.rotation.yaw % 360
+
+        print(waypoint.transform.location)
+        print('direction :', start_direction, waypoint.transform.rotation.yaw)
+        print('offset_vec:', offset)
+        print('offset    :', offset*offset_range - offset_range/2)
+
+        if start_direction > 315 or start_direction < 45:
+            new_location = carla.Location(x = location.x + offset*offset_range - offset_range/2,
+                                          y = location.y,
+                                          z = location.z)
+        elif start_direction > 225:
+            new_location = carla.Location(x = location.x,
+                                          y = location.y - offset*offset_range + offset_range/2,
+                                          z = location.z)
+        elif start_direction > 135:
+            new_location = carla.Location(x = location.x - offset*offset_range + offset_range/2,
+                                          y = location.y,
+                                          z = location.z)
+        elif start_direction > 45: # Current road is in this direction. It is right.
+            new_location = carla.Location(x = location.x,
+                                          y = location.y + offset*offset_range - offset_range/2,
+                                          z = location.z)
+        print('Old:', location)
+        print('New:', new_location)
+        print()
+        result.append(new_location)
+
+    return result
+
+    
+    
+
+
+    # new_start_location = carla.Location(x=start_location.x+start_x*2*x_range-x_range, 
+    #                                     y=start_location.y+start_y*2*y_range-y_range,
+    #                                     z=start_location.z)
+    # new_end_location = carla.Location(x=end_location.x+end_x*2*x_range-x_range, 
+    #                                   y=end_location.y+end_y*2*y_range-y_range,
+    #                                   z=end_location.z)
+
+    # return [new_start_location, new_end_location]
 
 
 
