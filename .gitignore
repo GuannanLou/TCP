@@ -8,3 +8,5 @@ data/*
 
 leaderboard/leaderboard/scenarios/__pycache__/route_scenario.cpython-37.pyc
 leaderboard/leaderboard/scenarios/__pycache__/scenario_manager.cpython-37.pyc
+log/TCP/lightning_logs/*
+TCP/epoch=59-last.ckpt
