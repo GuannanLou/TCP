@@ -594,7 +594,7 @@ class RouteScenario(BasicScenario):
 				transform.location.z = 0.3
 
 			# amount = town_amount[config.town] if config.town in town_amount else 0
-			new_actors = CarlaDataProvider.request_new_batch_actors('vehicle.*',
+			new_actors = CarlaDataProvider.request_new_batch_actors('vehicle.audi.*',
 														self.numb_other_vehicle,
 														self.other_actors_transforms,
 														autopilot=True,

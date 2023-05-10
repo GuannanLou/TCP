@@ -1712,9 +1712,9 @@ class InRouteTest(Criterion):
         distances = [1000]
         ego_vehicle_location = ego_vehicle.get_location()
 
-        for target_vehicle in world.get_actors().filter('static.*'):
-            distance = ego_vehicle_location.distance(target_vehicle.get_location())
-            distances.append(distance)
+        # for target_vehicle in world.get_actors().filter('static.*'):
+        #     distance = ego_vehicle_location.distance(target_vehicle.get_location())
+        #     distances.append(distance)
         for target_vehicle in world.get_actors().filter('traffic.*.*'):
             distance = ego_vehicle_location.distance(target_vehicle.get_location())
             distances.append(distance)

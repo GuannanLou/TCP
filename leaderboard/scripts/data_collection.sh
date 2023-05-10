@@ -19,16 +19,29 @@ export DATA_COLLECTION=True
 export AGENT_MODE=0
 
 
-# Roach data collection
 export ROUTE_FILE=routes_short
 current_time=$(date "+%Y-%m-%d|%H:%M:%S")
 
+# Roach data collection
 export ROUTES=leaderboard/data/TCP_training_routes/${ROUTE_FILE}.xml
 export TEAM_AGENT=team_code/roach_ap_agent.py
 export TEAM_CONFIG=roach/config/config_agent.yaml
 export CHECKPOINT_ENDPOINT=data_collect_${ROUTE_FILE}_${current_time}.json
 export SCENARIOS=leaderboard/data/scenarios/all_towns_traffic_scenarios.json
 export SAVE_PATH=data/${ROUTE_FILE}_${current_time}/
+
+
+# TCP evaluation
+# export ROUTES=leaderboard/data/evaluation_routes/routes_lav_valid.xml
+export ROUTES=leaderboard/data/TCP_training_routes/${ROUTE_FILE}.xml
+export TEAM_AGENT=team_code/tcp_agent.py
+export TEAM_CONFIG=TCP/epoch=59-last.ckpt
+# export CHECKPOINT_ENDPOINT=results_TCP.json
+export CHECKPOINT_ENDPOINT=data_collect_${ROUTE_FILE}_${current_time}.json
+export SCENARIOS=leaderboard/data/scenarios/all_towns_traffic_scenarios.json
+# export SAVE_PATH=data/results_TCP/
+export SAVE_PATH=data/${ROUTE_FILE}_${current_time}/
+
 
 # export RECORD_PATH=./
 

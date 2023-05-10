@@ -97,6 +97,7 @@ class ResultOutputProvider(object):
         # Criteria part
         header = ['Criterion', 'Result', 'Value']
         list_statistics = [header]
+        results = []
 
         for criterion in self._data.scenario.get_criteria():
 
@@ -105,7 +106,9 @@ class ResultOutputProvider(object):
             name = criterion.name
 
             result = criterion.test_status
-
+            results.append(result)
+            results.append(str(actual_value))
+            
             if result == "SUCCESS":
                 result = '\033[92m'+'SUCCESS'+'\033[0m'
             elif result == "FAILURE":
@@ -136,12 +139,19 @@ class ResultOutputProvider(object):
 
         if self._data.scenario_duration_game < self._data.scenario.timeout:
             result = '\033[92m'+'SUCCESS'+'\033[0m'
+            results.append('SUCCESS')
         else:
             result = '\033[91m'+'FAILURE'+'\033[0m'
+            results.append('FAILURE')
 
         list_statistics.extend([[name, result, '']])
 
         output += tabulate(list_statistics, tablefmt='fancy_grid')
         output += "\n"
+
+        criterion_file = open(self._data.fitness_path.replace('fitness','criterion'), 'a')
+        criterion_file.write(','.join(results)+'\n')
+        criterion_file.close()
+
 
         return output
