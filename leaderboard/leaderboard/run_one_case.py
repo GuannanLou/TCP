@@ -382,6 +382,7 @@ class TestCase(object):
                 #                     vertical_shift=1.0, persistency=50000.0)
 
                 current_waypoint = current_map.get_waypoint(start_location)
+                print('##current vehicle:', current_waypoint)
 
                 numb_other_vehicle = 0
                 waypoint_other_vehicle = []
@@ -671,7 +672,9 @@ class TestCase(object):
 
             import numpy as np
             
-            scenario_vecs = np.random.rand(1000, 9+3+2)
+            case_number = 1000
+
+            scenario_vecs = np.random.rand(case_number, 9+3+2)
             # 9 weather, 3 other vehicle, 2 position offset
 
             config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
@@ -686,7 +689,10 @@ class TestCase(object):
                 config.weather_vec = scenario_vec[0:9]
                 config.other_vehicle_vec = scenario_vec[9:9+3]
                 config.ego_vehicle_vec = scenario_vec[9+3:9+3+2] #update should be later, as we donot have map in it
-                
+                # config.other_vehicle_vec = [1,1,1]
+                # config.ego_vehicle_vec = [1,0]
+                # config.weather_vec  = [0,0,0,0,0,0,0,0,0]
+
                 config.vehicle_infront, config.vehicle_opposite, config.vehicle_side = other_vehicle_parser(config.other_vehicle_vec)
                 config.weather = weather_parser(config.weather_vec)
                 print()

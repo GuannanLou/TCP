@@ -1603,6 +1603,8 @@ class InRouteTest(Criterion):
 
         self.logger.debug("%s.update()[%s->%s]" % (self.__class__.__name__, self.status, new_status))
 
+        # print(self._actor.get_transform())
+
         """
         TODO:check fitness 
         """
@@ -1750,7 +1752,7 @@ class InRouteTest(Criterion):
             elif shortest_distance < self._last_fitness_score[4]:
                 color = ['⬇️  \033[91m','\033[0m']
             print("Destney Completeness: " + color[0] + str(shortest_distance) + color[1])
-        return shortest_distance
+        return 1 - shortest_distance
     
 class RouteCompletionTest(Criterion):
 
