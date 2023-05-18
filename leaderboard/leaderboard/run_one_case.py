@@ -41,6 +41,17 @@ from leaderboard.utils.statistics_manager import StatisticsManager
 from leaderboard.utils.route_indexer import RouteIndexer
 from leaderboard.utils.EXParser import EXParser
 
+from pymoo.core.problem import ElementwiseProblem
+from pymoo.algorithms.moo.nsga2 import NSGA2
+from pymoo.operators.crossover.sbx import SBX
+from pymoo.operators.mutation.pm import PM
+from pymoo.operators.sampling.rnd import FloatRandomSampling
+from pymoo.termination import get_termination
+from pymoo.optimize import minimize
+
+import numpy as np
+
+
 sensors_to_icons = {
     'sensor.camera.rgb':        'carla_camera',
     'sensor.camera.semantic_segmentation': 'carla_camera',
@@ -100,6 +111,7 @@ class TestCase(object):
         # to the simulator. Here we'll assume the simulator is accepting
         # requests in the localhost at port 2000.
         self.client = carla.Client(args.host, int(args.port))
+        self.args = args
         if args.timeout:
             self.client_timeout = float(args.timeout)
         self.client.set_timeout(self.client_timeout)
@@ -719,6 +731,56 @@ class TestCase(object):
         StatisticsManager.save_global_record(global_stats_record, self.sensor_icons, route_indexer.total, args.checkpoint)
 
 
+    def run_one_case(self, scenario_vec):
+        """
+        Run the challenge mode
+        """
+
+        route_indexer = RouteIndexer(self.args.routes, self.args.scenarios, self.args.repetitions)
+
+        while route_indexer.peek():
+            config = route_indexer.next()
+            import numpy as np
+            
+            case_number = 1000
+
+            # 9 weather, 3 other vehicle, 2 position offset
+
+            config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
+
+
+            config.repetition_index = 0
+            print()
+            start_time = time.time() 
+            print('SCENARIO:',[round(vec,2) for vec in scenario_vec])
+
+            config.weather_vec = scenario_vec[0:9]
+            config.other_vehicle_vec = scenario_vec[9:9+3]
+            config.ego_vehicle_vec = scenario_vec[9+3:9+3+2] #update should be later, as we donot have map in it
+
+            config.vehicle_infront, config.vehicle_opposite, config.vehicle_side = other_vehicle_parser(config.other_vehicle_vec)
+            config.weather = weather_parser(config.weather_vec)
+            print()
+            print('Start:', config.trajectory[0])
+            print('End  :', config.trajectory[1])
+
+            # run
+            self._load_and_run_scenario(self.args, config)
+
+            route_indexer.save_state(self.args.checkpoint)
+
+            vec_writer = open(self.args.fitness_path.replace('fitness.csv','scenario.csv'),'a')
+            vec_writer.write(','.join([str(vec) for vec in scenario_vec])+'\n')
+            vec_writer.close()
+            end_time = time.time()
+            elapsed_time = end_time - start_time 
+            print(f"Processing Time: {elapsed_time:.2f} seconds")
+
+        # save global statistics
+        print("\033[1m> Registering the global statistics\033[0m")
+        global_stats_record = self.statistics_manager.compute_global_statistics(route_indexer.total)
+        StatisticsManager.save_global_record(global_stats_record, self.sensor_icons, route_indexer.total, self.args.checkpoint)
+
 def ego_vehicle_parser(trajectory, ego_vehicle_vec, current_map, offset_range = 50):
     # start_location, end_location = trajectory
     result = []
@@ -792,6 +854,24 @@ def weather_parser(weather_vec):
         fog_falloff             = 0 if ff < 0.5 else (ff-0.5)*2*5
     )
 
+class CustomizedProblem(ElementwiseProblem):
+    def __init__(self, fitness_file, fitness_generator):
+        super().__init__(n_var=14,
+                         n_obj=3,
+                         xl=np.zeros(14),
+                         xu=np.ones(14))
+        self.file_name = fitness_file
+        self.fitness_generator =fitness_generator
+
+    def _evaluate(self, x, out, *args, **kwargs):
+        self.fitness_generator.run_one_case(x)
+        result = []
+        with open(self.file_name, 'r') as file:
+            data = [float(item) for item in file.readlines()[-1].strip().split(',')]
+            result = [data[2],data[6],data[14]]
+            # [2,6,14]
+        out['F'] = result
+
 def main():
     description = "CARLA AD Leaderboard Evaluation: evaluate your Agent in CARLA scenarios\n"
 
@@ -846,15 +926,31 @@ def main():
     statistics_manager = StatisticsManager()
 
     try:
-        print("begin")
         leaderboard_evaluator = TestCase(arguments, statistics_manager)
-        leaderboard_evaluator.run(arguments)
+        if 1==2: 
+            print("begin")
+            leaderboard_evaluator.run(arguments)
+        else:
+            problem = CustomizedProblem(arguments.fitness_path.replace('fitness.csv','criterion.csv'), leaderboard_evaluator)
+            algorithm = NSGA2(
+                pop_size=40,
+                n_offsprings=10,
+                sampling=FloatRandomSampling(),
+                crossover=SBX(prob=0.9, eta=15),
+                mutation=PM(eta=20),
+                eliminate_duplicates=True
+            )
+            termination = get_termination("n_gen", 40)
 
+            res = minimize(problem,
+               algorithm,
+               termination,
+               seed=1,
+               save_history=True,
+               verbose=True)
 
-
-
-
-
+            X = res.X
+            F = res.F
 
     except Exception as e:
         traceback.print_exc()

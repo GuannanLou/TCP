@@ -150,8 +150,9 @@ class ResultOutputProvider(object):
         output += "\n"
 
         criterion_file = open(self._data.fitness_path.replace('fitness','criterion'), 'a')
-        criterion_file.write(','.join(results)+'\n')
+        line = ','.join(results)+'\n'
+        line = line.replace('SUCCESS','0').replace('FAILURE','1')
+        criterion_file.write(line)
         criterion_file.close()
-
 
         return output
