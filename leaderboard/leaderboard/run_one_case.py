@@ -730,24 +730,26 @@ class TestCase(object):
         global_stats_record = self.statistics_manager.compute_global_statistics(route_indexer.total)
         StatisticsManager.save_global_record(global_stats_record, self.sensor_icons, route_indexer.total, args.checkpoint)
 
-
-    def run_one_case(self, scenario_vec):
+    def run_test(self, args, scenario_vec):
         """
         Run the challenge mode
         """
 
-        route_indexer = RouteIndexer(self.args.routes, self.args.scenarios, self.args.repetitions)
+        route_indexer = RouteIndexer(args.routes, args.scenarios, args.repetitions)
+
+        if args.resume:
+            route_indexer.resume(args.checkpoint)
+            self.statistics_manager.resume(args.checkpoint)
+        else:
+            self.statistics_manager.clear_record(args.checkpoint)
+            route_indexer.save_state(args.checkpoint)
 
         while route_indexer.peek():
+            # setup
             config = route_indexer.next()
-            import numpy as np
-            
-            case_number = 1000
 
             # 9 weather, 3 other vehicle, 2 position offset
-
             config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
-
 
             config.repetition_index = 0
             print()
@@ -757,19 +759,24 @@ class TestCase(object):
             config.weather_vec = scenario_vec[0:9]
             config.other_vehicle_vec = scenario_vec[9:9+3]
             config.ego_vehicle_vec = scenario_vec[9+3:9+3+2] #update should be later, as we donot have map in it
+            # config.other_vehicle_vec = [1,1,1]
+            # config.ego_vehicle_vec = [1,0]
+            # config.weather_vec  = [0,0,0,0,0,0,0,0,0]
 
             config.vehicle_infront, config.vehicle_opposite, config.vehicle_side = other_vehicle_parser(config.other_vehicle_vec)
             config.weather = weather_parser(config.weather_vec)
             print()
+            # print(config.weather)
             print('Start:', config.trajectory[0])
             print('End  :', config.trajectory[1])
+            # print(config.vehicle_infront, config.vehicle_opposite, config.vehicle_side)
 
             # run
-            self._load_and_run_scenario(self.args, config)
+            self._load_and_run_scenario(args, config)
 
-            route_indexer.save_state(self.args.checkpoint)
+            route_indexer.save_state(args.checkpoint)
 
-            vec_writer = open(self.args.fitness_path.replace('fitness.csv','scenario.csv'),'a')
+            vec_writer = open(args.fitness_path.replace('fitness.csv','scenario.csv'),'a')
             vec_writer.write(','.join([str(vec) for vec in scenario_vec])+'\n')
             vec_writer.close()
             end_time = time.time()
@@ -779,7 +786,48 @@ class TestCase(object):
         # save global statistics
         print("\033[1m> Registering the global statistics\033[0m")
         global_stats_record = self.statistics_manager.compute_global_statistics(route_indexer.total)
-        StatisticsManager.save_global_record(global_stats_record, self.sensor_icons, route_indexer.total, self.args.checkpoint)
+        StatisticsManager.save_global_record(global_stats_record, self.sensor_icons, route_indexer.total, args.checkpoint)
+
+
+
+    def run_one_case(self, scenario_vec, route_indexer, config):
+        """
+        Run the challenge mode
+        """
+        # 9 weather, 3 other vehicle, 2 position offset
+        config.repetition_index = 0
+        print()
+        start_time = time.time() 
+        print('SCENARIO:',[round(vec,2) for vec in scenario_vec])
+
+        config.weather_vec = scenario_vec[0:9]
+        config.other_vehicle_vec = scenario_vec[9:9+3]
+        config.ego_vehicle_vec = scenario_vec[9+3:9+3+2] #update should be later, as we donot have map in it
+        # config.other_vehicle_vec = [1,1,1]
+        # config.ego_vehicle_vec = [1,0]
+        # config.weather_vec  = [0,0,0,0,0,0,0,0,0]
+
+        config.vehicle_infront, config.vehicle_opposite, config.vehicle_side = other_vehicle_parser(config.other_vehicle_vec)
+        config.weather = weather_parser(config.weather_vec)
+        print()
+        # print(config.weather)
+        print('Start:', config.trajectory[0])
+        print('End  :', config.trajectory[1])
+        # print(config.vehicle_infront, config.vehicle_opposite, config.vehicle_side)
+
+        # run
+        self._load_and_run_scenario(self.args, config)
+
+        route_indexer.save_state(self.args.checkpoint)
+
+        vec_writer = open(self.args.fitness_path.replace('fitness.csv','scenario.csv'),'a')
+        vec_writer.write(','.join([str(vec) for vec in scenario_vec])+'\n')
+        vec_writer.close()
+        end_time = time.time()
+        elapsed_time = end_time - start_time 
+        print(f"Processing Time: {elapsed_time:.2f} seconds")
+
+
 
 def ego_vehicle_parser(trajectory, ego_vehicle_vec, current_map, offset_range = 50):
     # start_location, end_location = trajectory
@@ -855,16 +903,20 @@ def weather_parser(weather_vec):
     )
 
 class CustomizedProblem(ElementwiseProblem):
-    def __init__(self, fitness_file, fitness_generator):
+    def __init__(self, fitness_file, fitness_generator, arguments):
         super().__init__(n_var=14,
                          n_obj=3,
                          xl=np.zeros(14),
                          xu=np.ones(14))
         self.file_name = fitness_file
         self.fitness_generator =fitness_generator
+        self.args = arguments
+
 
     def _evaluate(self, x, out, *args, **kwargs):
-        self.fitness_generator.run_one_case(x)
+
+        self.fitness_generator.run_test(self.args, x)
+        # self.fitness_generator.run_one_case(x, self.route_indexer, self.config)
         result = []
         with open(self.file_name, 'r') as file:
             data = [float(item) for item in file.readlines()[-1].strip().split(',')]
@@ -887,7 +939,7 @@ def main():
     parser.add_argument('--debug', type=int, help='Run with debug output', default=0)
     parser.add_argument('--record', type=str, default='',
                         help='Use CARLA recording feature to create a recording of the scenario')
-    parser.add_argument('--timeout', default="200.0",
+    parser.add_argument('--timeout', default="60.0",
                         help='Set the CARLA client timeout value in seconds')
 
     # simulation setup
@@ -927,20 +979,23 @@ def main():
 
     try:
         leaderboard_evaluator = TestCase(arguments, statistics_manager)
-        if 1==2: 
+        if True: 
             print("begin")
             leaderboard_evaluator.run(arguments)
         else:
-            problem = CustomizedProblem(arguments.fitness_path.replace('fitness.csv','criterion.csv'), leaderboard_evaluator)
+            print("NSGAII")
+
+            problem = CustomizedProblem(arguments.fitness_path.replace('fitness.csv','criterion.csv'), 
+                                        leaderboard_evaluator, arguments)
             algorithm = NSGA2(
-                pop_size=40,
-                n_offsprings=10,
+                pop_size=2,
+                n_offsprings=2,
                 sampling=FloatRandomSampling(),
                 crossover=SBX(prob=0.9, eta=15),
                 mutation=PM(eta=20),
                 eliminate_duplicates=True
             )
-            termination = get_termination("n_gen", 40)
+            termination = get_termination("n_gen", 3)
 
             res = minimize(problem,
                algorithm,
