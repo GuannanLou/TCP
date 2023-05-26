@@ -45,7 +45,7 @@ class ScenarioManager(object):
     """
 
 
-    def __init__(self, timeout, debug_mode=False, fitness_path='./fitness.csv'):
+    def __init__(self, timeout, debug_mode=False, log=True, fitness_path='./fitness.csv'):
         """
         Setups up the parameters, which will be filled at load_scenario()
         """
@@ -56,6 +56,7 @@ class ScenarioManager(object):
         self.other_actors = None
         self.fitness_path = fitness_path
 
+        self._log = log
         self._debug_mode = debug_mode
         self._agent = None
         self._running = False
@@ -230,4 +231,4 @@ class ScenarioManager(object):
         if self.scenario.timeout_node.timeout:
             global_result = '\033[91m'+'FAILURE'+'\033[0m'
 
-        ResultOutputProvider(self, global_result)
+        ResultOutputProvider(self, global_result, log = self._log)

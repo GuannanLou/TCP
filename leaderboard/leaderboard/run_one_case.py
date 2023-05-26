@@ -132,7 +132,7 @@ class TestCase(object):
         self.module_agent = importlib.import_module(module_name)
 
         # Create the ScenarioManager
-        self.manager = ScenarioManager(args.timeout, args.debug > 1, args.fitness_path)
+        self.manager = ScenarioManager(args.timeout, args.debug > 1, log=args.log, fitness_path = args.fitness_path)
 
         # Time control for summary purposes
         self._start_time = GameTime.get_time()
@@ -244,7 +244,8 @@ class TestCase(object):
         #     settings = self.world.get_settings()
         #     settings.synchronous_mode = False
         #     self.world.apply_settings(settings)
-        print(town)
+        if self.args.log:
+            print(town)
         try: 
             self.world = self.client.load_world(town)
         except Exception as e:
@@ -285,8 +286,8 @@ class TestCase(object):
             self.manager.scenario_duration_game,
             crash_message
         )
-
-        print("\033[1m> Registering the route statistics\033[0m")
+        if self.args.log:
+            print("\033[1m> Registering the route statistics\033[0m")
         self.statistics_manager.save_record(current_stats_record, config.index, checkpoint)
         self.statistics_manager.save_entry_status(entry_status, False, checkpoint)
 
@@ -299,13 +300,12 @@ class TestCase(object):
         """
         crash_message = ""
         entry_status = "Started"
-
-        print("\n\033[1m========= Preparing {} (repetition {}) =========".format(config.name, config.repetition_index))
-        print("> Setting up the agent\033[0m")
+        if self.args.log:
+            print("\n\033[1m========= Preparing {} (repetition {}) =========".format(config.name, config.repetition_index))
+            print("> Setting up the agent\033[0m")
 
         # Prepare the statistics of the route
         self.statistics_manager.set_route(config.name, config.index)
-
         # Set up the user's agent, and the timer to avoid freezing the simulation
         try:
             self._agent_watchdog.start()
@@ -350,8 +350,8 @@ class TestCase(object):
             self._cleanup()
             return
 
-        print("\033[1m> Loading the world\033[0m")
-
+        if self.args.log:
+            print("\033[1m> Loading the world\033[0m")
         # Load the world and the scenario
         try:
             self._load_and_wait_for_world(args, config.town, config.weather)
@@ -394,7 +394,8 @@ class TestCase(object):
                 #                     vertical_shift=1.0, persistency=50000.0)
 
                 current_waypoint = current_map.get_waypoint(start_location)
-                print('##current vehicle:', current_waypoint)
+                if self.args.log:
+                    print('##current vehicle:', current_waypoint)
 
                 numb_other_vehicle = 0
                 waypoint_other_vehicle = []
@@ -404,20 +405,23 @@ class TestCase(object):
 
                     if test_waypoint:
                         numb_other_vehicle += 1
-                        print('----VEHICLE-INFRONT----')
+                        if self.args.log:
+                            print('----VEHICLE-INFRONT----')
                         # print('##current vehicle:', current_waypoint)
                         # print('####other vehicle:', test_waypoint)
 
                         waypoint_other_vehicle.append(test_waypoint)
                     else:
-                        print("!!!!! Add vehicle infront failed")
+                        if self.args.log:
+                            print("!!!!! Add vehicle infront failed")
 
                 if config.vehicle_side:
                     test_waypoint = current_waypoint.get_right_lane()
 
                     if test_waypoint:
                         numb_other_vehicle += 1
-                        print('----VEHICLE-SIDE-------')
+                        if self.args.log:
+                            print('----VEHICLE-SIDE-------')
                         # print('##current vehicle:', current_waypoint)
                         # print('####other vehicle:', test_waypoint)
 
@@ -428,7 +432,8 @@ class TestCase(object):
                         # self._draw_road(self.world, test_waypoint, road, 
                         #             vertical_shift=1.0, persistency=50000.0)
                     else:
-                        print("!!!!! Add vehicle in side lane failed")
+                        if self.args.log:
+                            print("!!!!! Add vehicle in side lane failed")
                     
                 if config.vehicle_opposite:
                     test_waypoint = current_waypoint.get_left_lane()
@@ -449,7 +454,8 @@ class TestCase(object):
 
                     if test_waypoint:
                         numb_other_vehicle += 1
-                        print('----VEHICLE-OPPOSITE---')
+                        if self.args.log:
+                            print('----VEHICLE-OPPOSITE---')
                         # print('##current vehicle:', current_waypoint)
                         # print('####other vehicle:', test_waypoint)
 
@@ -462,7 +468,8 @@ class TestCase(object):
                         # self._draw_road(self.world, test_waypoint, road, 
                         #                 vertical_shift=1.0, persistency=50000.0)
                     else:
-                        print("!!!!! Add vehicle in opposite lane failed")
+                        if self.args.log:
+                            print("!!!!! Add vehicle in opposite lane failed")
 
                 scenario = RouteScenario(world=self.world, 
                                          config=config, 
@@ -504,14 +511,16 @@ class TestCase(object):
             self._cleanup()
             sys.exit(-1)
 
-        print("\033[1m> Running the route\033[0m")
+        if self.args.log:
+            print("\033[1m> Running the route\033[0m")
         traffic_manager = CarlaDataProvider.get_client().get_trafficmanager(CarlaDataProvider.get_traffic_manager_port()) 
         traffic_manager.global_percentage_speed_difference(-75) # SPEED. base speed 30 km/h, increased by 50%
 
         self.manager.run_scenario()
 
         try:
-            print("\033[1m> Stopping the route\033[0m")
+            if self.args.log:
+                print("\033[1m> Stopping the route\033[0m")
             self.manager.stop_scenario()
             self._register_statistics(config, args.checkpoint, entry_status, crash_message)
 
@@ -608,19 +617,7 @@ class TestCase(object):
                                 color=carla.Color(0, 0, 255), life_time=persistency)
         world.debug.draw_point(road[-1].transform.location + carla.Location(z=vertical_shift), size=0.2,
                                 color=carla.Color(255, 0, 0), life_time=persistency)
-
-
-    def log_xml(self, args, config, vehicles, waypoints):
-        parser = EXParser(args.fitness_path.replace('fitness.csv','log.xml'))
-        new_setting = parser.addSetting('1', config.town, args.agent_mode)
-        parser.addWeather(new_setting, config.weather)
-        for i, vehicle in enumerate(vehicles):
-            print(i,vehicle)
-            if i-1 <= len(waypoints):
-                parser.addVehicle(new_setting,str(vehicle.id),vehicle.type_id,waypoints[i])
-            else:
-                parser.addVehicle(new_setting,str(vehicle.id),vehicle.type_id,[])
-        parser.update()
+        
 
 
     def get_waypoints(self, start_location):
@@ -730,102 +727,38 @@ class TestCase(object):
         global_stats_record = self.statistics_manager.compute_global_statistics(route_indexer.total)
         StatisticsManager.save_global_record(global_stats_record, self.sensor_icons, route_indexer.total, args.checkpoint)
 
-    def run_test(self, args, scenario_vec):
+
+    def run_one_case(self, scenario_vec, config):
         """
         Run the challenge mode
         """
+        # 9 weather, 3 other vehicle, 2 position offset
+        config.repetition_index = 0
+        start_time = time.time() 
 
-        route_indexer = RouteIndexer(args.routes, args.scenarios, args.repetitions)
+        config.weather_vec = scenario_vec[0:9]
+        config.other_vehicle_vec = scenario_vec[9:9+3]
+        config.ego_vehicle_vec = scenario_vec[9+3:9+3+2] #update should be later, as we donot have map in it
+        
+        config.vehicle_infront, config.vehicle_opposite, config.vehicle_side = other_vehicle_parser(config.other_vehicle_vec)
+        config.weather = weather_parser(config.weather_vec)
 
-        if args.resume:
-            route_indexer.resume(args.checkpoint)
-            self.statistics_manager.resume(args.checkpoint)
-        else:
-            self.statistics_manager.clear_record(args.checkpoint)
-            route_indexer.save_state(args.checkpoint)
-
-        while route_indexer.peek():
-            # setup
-            config = route_indexer.next()
-
-            # 9 weather, 3 other vehicle, 2 position offset
-            config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
-
-            config.repetition_index = 0
-            print()
-            start_time = time.time() 
-            print('SCENARIO:',[round(vec,2) for vec in scenario_vec])
-
-            config.weather_vec = scenario_vec[0:9]
-            config.other_vehicle_vec = scenario_vec[9:9+3]
-            config.ego_vehicle_vec = scenario_vec[9+3:9+3+2] #update should be later, as we donot have map in it
-            # config.other_vehicle_vec = [1,1,1]
-            # config.ego_vehicle_vec = [1,0]
-            # config.weather_vec  = [0,0,0,0,0,0,0,0,0]
-
-            config.vehicle_infront, config.vehicle_opposite, config.vehicle_side = other_vehicle_parser(config.other_vehicle_vec)
-            config.weather = weather_parser(config.weather_vec)
+        if self.args.log:
             print()
             # print(config.weather)
             print('Start:', config.trajectory[0])
             print('End  :', config.trajectory[1])
             # print(config.vehicle_infront, config.vehicle_opposite, config.vehicle_side)
 
-            # run
-            self._load_and_run_scenario(args, config)
-
-            route_indexer.save_state(args.checkpoint)
-
-            vec_writer = open(args.fitness_path.replace('fitness.csv','scenario.csv'),'a')
-            vec_writer.write(','.join([str(vec) for vec in scenario_vec])+'\n')
-            vec_writer.close()
-            end_time = time.time()
-            elapsed_time = end_time - start_time 
-            print(f"Processing Time: {elapsed_time:.2f} seconds")
-
-        # save global statistics
-        print("\033[1m> Registering the global statistics\033[0m")
-        global_stats_record = self.statistics_manager.compute_global_statistics(route_indexer.total)
-        StatisticsManager.save_global_record(global_stats_record, self.sensor_icons, route_indexer.total, args.checkpoint)
-
-
-
-    def run_one_case(self, scenario_vec, route_indexer, config):
-        """
-        Run the challenge mode
-        """
-        # 9 weather, 3 other vehicle, 2 position offset
-        config.repetition_index = 0
-        print()
-        start_time = time.time() 
-        print('SCENARIO:',[round(vec,2) for vec in scenario_vec])
-
-        config.weather_vec = scenario_vec[0:9]
-        config.other_vehicle_vec = scenario_vec[9:9+3]
-        config.ego_vehicle_vec = scenario_vec[9+3:9+3+2] #update should be later, as we donot have map in it
-        # config.other_vehicle_vec = [1,1,1]
-        # config.ego_vehicle_vec = [1,0]
-        # config.weather_vec  = [0,0,0,0,0,0,0,0,0]
-
-        config.vehicle_infront, config.vehicle_opposite, config.vehicle_side = other_vehicle_parser(config.other_vehicle_vec)
-        config.weather = weather_parser(config.weather_vec)
-        print()
-        # print(config.weather)
-        print('Start:', config.trajectory[0])
-        print('End  :', config.trajectory[1])
-        # print(config.vehicle_infront, config.vehicle_opposite, config.vehicle_side)
-
         # run
         self._load_and_run_scenario(self.args, config)
-
-        route_indexer.save_state(self.args.checkpoint)
 
         vec_writer = open(self.args.fitness_path.replace('fitness.csv','scenario.csv'),'a')
         vec_writer.write(','.join([str(vec) for vec in scenario_vec])+'\n')
         vec_writer.close()
-        end_time = time.time()
-        elapsed_time = end_time - start_time 
-        print(f"Processing Time: {elapsed_time:.2f} seconds")
+        # end_time = time.time()
+        # elapsed_time = end_time - start_time 
+        # print(f"Processing Time: {elapsed_time:.2f} seconds")
 
 
 
@@ -903,24 +836,40 @@ def weather_parser(weather_vec):
     )
 
 class CustomizedProblem(ElementwiseProblem):
-    def __init__(self, fitness_file, fitness_generator, arguments):
+    def __init__(self, fitness_file, fitness_generator, config):
         super().__init__(n_var=14,
                          n_obj=3,
                          xl=np.zeros(14),
                          xu=np.ones(14))
         self.file_name = fitness_file
-        self.fitness_generator =fitness_generator
-        self.args = arguments
+        self.fitness_generator = fitness_generator
+        self.config = config
 
 
     def _evaluate(self, x, out, *args, **kwargs):
-
-        self.fitness_generator.run_test(self.args, x)
-        # self.fitness_generator.run_one_case(x, self.route_indexer, self.config)
+        dict_cirtion_index = {"RouteCompletionTest": 0,   
+            "RouteCompletionTest_figure": 1,
+            "OutsideRouteLanesTest": 2, 
+            "OutsideRouteLanesTest_figure": 3,
+            "CollisionTest": 4,         
+            "CollisionTest_figure": 5,
+            "RunningRedLightTest": 6,   
+            "RunningRedLightTest_figure": 7,
+            "RunningStopTest": 8,       
+            "RunningStopTest_figure": 9,
+            "InRouteTest": 10, 
+            "InRouteTest_figure": 11,          
+            "AgentBlockedTest": 12,
+            "AgentBlockedTest_figure": 13,      
+            "Timeout": 14}
+        self.fitness_generator(x, self.config)
         result = []
         with open(self.file_name, 'r') as file:
             data = [float(item) for item in file.readlines()[-1].strip().split(',')]
-            result = [data[2],data[6],data[14]]
+            result = [1-data[dict_cirtion_index["OutsideRouteLanesTest"]],
+                      1-data[dict_cirtion_index["CollisionTest"]],
+                      1-data[dict_cirtion_index["Timeout"]]]
+            # result = [1-data[2],1-data[6],1-data[14]]
             # [2,6,14]
         out['F'] = result
 
@@ -941,6 +890,8 @@ def main():
                         help='Use CARLA recording feature to create a recording of the scenario')
     parser.add_argument('--timeout', default="60.0",
                         help='Set the CARLA client timeout value in seconds')
+    parser.add_argument('--log', default="1",
+                        help='Whether print log to console')
 
     # simulation setup
     parser.add_argument('--routes',
@@ -978,34 +929,62 @@ def main():
     statistics_manager = StatisticsManager()
 
     try:
-        leaderboard_evaluator = TestCase(arguments, statistics_manager)
-        if True: 
+        
+        if False: 
             print("begin")
-            leaderboard_evaluator.run(arguments)
+            # leaderboard_evaluator.run(arguments)
+            leaderboard_evaluator = TestCase(arguments, statistics_manager)
+            route_indexer = RouteIndexer(arguments.routes, arguments.scenarios, arguments.repetitions)
+            config = None
+            while route_indexer.peek():
+                config = route_indexer.next()
+            
+            config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
+
+            case_number = 3
+            scenario_vecs = np.random.rand(case_number, 9+3+2)
+            for scenario_vec in scenario_vecs:
+                leaderboard_evaluator.run_one_case(scenario_vec, config)
+    # def run_one_case(self, scenario_vec, config):
+            
         else:
             print("NSGAII")
+            arguments.log=False
+            leaderboard_evaluator = TestCase(arguments, statistics_manager)
+            route_indexer = RouteIndexer(arguments.routes, arguments.scenarios, arguments.repetitions)
+            config = None
+            while route_indexer.peek():
+                config = route_indexer.next()
 
-            problem = CustomizedProblem(arguments.fitness_path.replace('fitness.csv','criterion.csv'), 
-                                        leaderboard_evaluator, arguments)
+            config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
+
+
+
+            problem = CustomizedProblem(arguments.fitness_path.replace('fitness.csv','criterion.csv'),
+                                        leaderboard_evaluator.run_one_case,
+                                        config)
             algorithm = NSGA2(
-                pop_size=2,
-                n_offsprings=2,
+                pop_size=50,
+                n_offsprings=10,
                 sampling=FloatRandomSampling(),
                 crossover=SBX(prob=0.9, eta=15),
                 mutation=PM(eta=20),
                 eliminate_duplicates=True
             )
-            termination = get_termination("n_gen", 3)
+            termination = get_termination("n_gen", 35)
 
             res = minimize(problem,
                algorithm,
                termination,
                seed=1,
-               save_history=True,
+               save_history=False,
                verbose=True)
 
             X = res.X
             F = res.F
+
+            print(X, file=open('output.txt','a'))
+            print(F, file=open('output.txt','a'))
 
     except Exception as e:
         traceback.print_exc()

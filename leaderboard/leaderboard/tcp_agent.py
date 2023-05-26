@@ -71,7 +71,7 @@ class TCPAgent(autonomous_agent.AutonomousAgent):
 			string = pathlib.Path(os.environ['ROUTES']).stem + '_'
 			string += '_'.join(map(lambda x: '%02d' % x, (now.month, now.day, now.hour, now.minute, now.second)))
 
-			print (string)
+			# print (string)
 
 			self.save_path = pathlib.Path(os.environ['SAVE_PATH']) / string
 			self.save_path.mkdir(parents=True, exist_ok=False)

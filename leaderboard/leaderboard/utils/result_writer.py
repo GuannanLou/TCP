@@ -23,7 +23,7 @@ class ResultOutputProvider(object):
     It shall be used from the ScenarioManager only.
     """
 
-    def __init__(self, data, global_result):
+    def __init__(self, data, global_result, log=True):
         """
         - data contains all scenario-related information
         - global_result is overall pass/fail info
@@ -36,9 +36,12 @@ class ResultOutputProvider(object):
         self._end_time = time.strftime('%Y-%m-%d %H:%M:%S',
                                        time.localtime(self._data.end_system_time))
 
-        print(self.create_output_text())
-
-        print(self.create_fitness_score_text())
+        output_text = self.create_output_text()
+        fitness_score_text = self.create_fitness_score_text()
+        if log:
+            print(output_text)
+            print(fitness_score_text)
+        
 
 
     def create_fitness_score_text(self):
@@ -66,6 +69,7 @@ class ResultOutputProvider(object):
                 fitness_file = open(self._data.fitness_path, 'a')
                 fitness_file.write(logline)
                 fitness_file.close()
+
                 return tabulate(list_statistics, tablefmt='fancy_grid')+'\n'
         
 
