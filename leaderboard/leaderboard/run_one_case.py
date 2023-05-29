@@ -930,9 +930,10 @@ def main():
 
     try:
         
-        if False: 
+        if True: 
             print("begin")
             # leaderboard_evaluator.run(arguments)
+            arguments.log=True
             leaderboard_evaluator = TestCase(arguments, statistics_manager)
             route_indexer = RouteIndexer(arguments.routes, arguments.scenarios, arguments.repetitions)
             config = None
@@ -941,7 +942,7 @@ def main():
             
             config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
 
-            case_number = 3
+            case_number = 3000
             scenario_vecs = np.random.rand(case_number, 9+3+2)
             for scenario_vec in scenario_vecs:
                 leaderboard_evaluator.run_one_case(scenario_vec, config)
