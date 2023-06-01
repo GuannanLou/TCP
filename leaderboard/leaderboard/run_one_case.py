@@ -27,6 +27,7 @@ import carla
 import signal
 import torch
 import time
+import joblib
 
 from srunner.scenariomanager.carla_data_provider import *
 from srunner.scenariomanager.timer import GameTime
@@ -873,6 +874,48 @@ class CustomizedProblem(ElementwiseProblem):
             # [2,6,14]
         out['F'] = result
 
+
+class SurrogateProblem(ElementwiseProblem):
+    def __init__(self, config, surrogate_path):
+        super().__init__(n_var=14,
+                         n_obj=3,
+                         xl=np.zeros(14),
+                         xu=np.ones(14))
+        self.config = config
+        self.surrogate_path = surrogate_path
+        
+
+    def _evaluate(self, x, out, *args, **kwargs):
+        surrogate_models = {"RouteCompletionTest"  : joblib.load('./tools/models/RF-RouteCompletionTest.pkl'), 
+                            "CollisionTest"        : joblib.load('./tools/models/RF-CollisionTest.pkl'), 
+                            "OutsideRouteLanesTest": joblib.load('./tools/models/RF-OutsideRouteLanesTest.pkl'), 
+                            "Timeout"              : joblib.load('./tools/models/RF-Timeout.pkl')}
+        result = [
+            1-surrogate_models["OutsideRouteLanesTest"].predict([x])[0],
+            1-surrogate_models["CollisionTest"].predict([x])[0],
+            1-surrogate_models["Timeout"].predict([x])[0]
+        ]
+        file = open(self.surrogate_path+'criterion.csv', 'a')
+        file.write(','.join([str(item) for item in [surrogate_models["OutsideRouteLanesTest"].predict([x])[0],
+                             surrogate_models["CollisionTest"].predict([x])[0],
+                             surrogate_models["Timeout"].predict([x])[0]]])+'\n')
+        file.close()
+
+        file = open(self.surrogate_path+'scenario.csv', 'a')
+        file.write(','.join([str(item) for item in x])+'\n')
+        file.close()
+
+        out['F'] = result
+
+
+def mkdir(path):
+    print(path)
+    folder = os.path.exists(path)
+    if not folder:
+        os.makedirs(path)
+    
+ 
+
 def main():
     description = "CARLA AD Leaderboard Evaluation: evaluate your Agent in CARLA scenarios\n"
 
@@ -927,10 +970,12 @@ def main():
     arguments = parser.parse_args()
     print("init statistics_manager")
     statistics_manager = StatisticsManager()
-
+    
+    GA = False
+    surrogate = False
     try:
         
-        if True: 
+        if not GA: 
             print("begin")
             # leaderboard_evaluator.run(arguments)
             arguments.log=True
@@ -942,28 +987,35 @@ def main():
             
             config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
 
-            case_number = 3000
-            scenario_vecs = np.random.rand(case_number, 9+3+2)
+            # case_number = 3000
+            # scenario_vecs = np.random.rand(case_number, 9+3+2)
+            scenario_vecs = np.genfromtxt('surrogate/routes_short_2023-05-31|15:47:49/scenario.csv', delimiter=',')
+          
             for scenario_vec in scenario_vecs:
                 leaderboard_evaluator.run_one_case(scenario_vec, config)
-    # def run_one_case(self, scenario_vec, config):
             
         else:
             print("NSGAII")
             arguments.log=False
-            leaderboard_evaluator = TestCase(arguments, statistics_manager)
+            # surrogate = False
+
             route_indexer = RouteIndexer(arguments.routes, arguments.scenarios, arguments.repetitions)
             config = None
             while route_indexer.peek():
                 config = route_indexer.next()
 
-            config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
+            mkdir('./surrogate/'+arguments.fitness_path.split('/')[1])
 
-
-
-            problem = CustomizedProblem(arguments.fitness_path.replace('fitness.csv','criterion.csv'),
-                                        leaderboard_evaluator.run_one_case,
-                                        config)
+            problem = None
+            if surrogate:
+                print('surrogate')
+                problem = SurrogateProblem(config, surrogate_path='./surrogate/'+arguments.fitness_path.split('/')[1]+'/')
+            else:
+                leaderboard_evaluator = TestCase(arguments, statistics_manager)
+                config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
+                problem = CustomizedProblem(arguments.fitness_path.replace('fitness.csv','criterion.csv'),
+                                            leaderboard_evaluator.run_one_case,
+                                            config)
             algorithm = NSGA2(
                 pop_size=50,
                 n_offsprings=10,
@@ -984,13 +1036,16 @@ def main():
             X = res.X
             F = res.F
 
-            print(X, file=open('output.txt','a'))
-            print(F, file=open('output.txt','a'))
+            
+            np.savez('./surrogate/'+arguments.fitness_path.split('/')[1]+'/output.npz', X, F)
+            # print(X, file=open(arguments.fitness_path.replace('fitness.csv','output.txt'),'a'))
+            # print(F, file=open(arguments.fitness_path.replace('fitness.csv','output.txt'),'a'))
 
     except Exception as e:
         traceback.print_exc()
     finally:
-        del leaderboard_evaluator
+        if not surrogate:
+            del leaderboard_evaluator
 
 
 if __name__ == '__main__':
