@@ -1,18 +1,18 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <routes>
   <!-- Straingt and crossing -->
-  <!-- <route id="4" town="Town03">
+  <route id="4" town="Town03">
     <weather id="WetCloudySunset" cloudiness="90.000000" precipitation="0.000000" precipitation_deposits="50.000000" wind_intensity="0.350000" sun_azimuth_angle="0.000000" sun_altitude_angle="15.000000" fog_density="0.000000" fog_distance="0.000000" fog_falloff="0.000000" wetness="0.000000">
       <waypoint x="-85.21" y="-90" z="0.0" pitch="0.0" roll="0.0" yaw="89.84"/>
       <waypoint x="-84.89" y="65" z="0.0" pitch="0.0" roll="0.0" yaw="89.84"/>
     </weather>
-  </route> -->
+  </route>
 
   <!-- Curve road -->
-  <route id="7" town="Town10HD">
+  <!-- <route id="7" town="Town10HD">
     <waypoint x="49.999512" y="137.631378" z="0.0" pitch="0.0" roll="0.0" yaw="0.0"/>
     <waypoint x="106.109116" y="75" z="0.0" pitch="0.0" roll="0.0" yaw="0.0"/>
-  </route>
+  </route> -->
 
   <!-- A vehicle stop on the side lane, and the ego-vehicle can not move -->
   <!-- <route id="9" town="Town10HD">

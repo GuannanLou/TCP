@@ -867,7 +867,10 @@ class CustomizedProblem(ElementwiseProblem):
         result = []
         with open(self.file_name, 'r') as file:
             data = [float(item) for item in file.readlines()[-1].strip().split(',')]
-            result = [1-data[dict_cirtion_index["OutsideRouteLanesTest"]],
+            # result = [1-data[dict_cirtion_index["OutsideRouteLanesTest"]],
+            #           1-data[dict_cirtion_index["CollisionTest"]],
+            #           1-data[dict_cirtion_index["Timeout"]]]
+            result = [1-data[dict_cirtion_index["RunningRedLightTest"]],
                       1-data[dict_cirtion_index["CollisionTest"]],
                       1-data[dict_cirtion_index["Timeout"]]]
             # result = [1-data[2],1-data[6],1-data[14]]
@@ -971,7 +974,7 @@ def main():
     print("init statistics_manager")
     statistics_manager = StatisticsManager()
     
-    GA = False
+    GA = True
     surrogate = False
     try:
         
@@ -997,7 +1000,6 @@ def main():
         else:
             print("NSGAII")
             arguments.log=False
-            # surrogate = False
 
             route_indexer = RouteIndexer(arguments.routes, arguments.scenarios, arguments.repetitions)
             config = None
