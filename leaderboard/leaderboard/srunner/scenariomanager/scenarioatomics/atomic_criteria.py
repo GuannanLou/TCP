@@ -1754,6 +1754,7 @@ class InRouteTest(Criterion):
             print("Destney Completeness: " + color[0] + str(shortest_distance) + color[1])
         return 1 - shortest_distance
     
+
 class RouteCompletionTest(Criterion):
 
     """
@@ -1832,7 +1833,8 @@ class RouteCompletionTest(Criterion):
                         "Agent has completed > {:.2f}% of the route".format(
                             self._percentage_route_completed))
 
-            if self._percentage_route_completed > 99.0 and location.distance(self.target) < self.DISTANCE_THRESHOLD:
+            # if self._percentage_route_completed > 99.0 and location.distance(self.target) < self.DISTANCE_THRESHOLD:
+            if self._percentage_route_completed > 95.0 and location.distance(self.target) < self.DISTANCE_THRESHOLD:
                 route_completion_event = TrafficEvent(event_type=TrafficEventType.ROUTE_COMPLETED)
                 route_completion_event.set_message("Destination was successfully reached")
                 self.list_traffic_events.append(route_completion_event)

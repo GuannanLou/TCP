@@ -873,8 +873,9 @@ class CustomizedProblem(ElementwiseProblem):
             result = [1-data[dict_cirtion_index["RunningRedLightTest"]],
                       1-data[dict_cirtion_index["CollisionTest"]],
                       1-data[dict_cirtion_index["Timeout"]]]
-            # result = [1-data[2],1-data[6],1-data[14]]
-            # [2,6,14]
+            
+
+
         out['F'] = result
 
 
@@ -974,7 +975,7 @@ def main():
     print("init statistics_manager")
     statistics_manager = StatisticsManager()
     
-    GA = True
+    GA = False
     surrogate = False
     try:
         
@@ -990,9 +991,10 @@ def main():
             
             config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
 
-            # case_number = 3000
-            # scenario_vecs = np.random.rand(case_number, 9+3+2)
-            scenario_vecs = np.genfromtxt('surrogate/routes_short_2023-05-31|15:47:49/scenario.csv', delimiter=',')
+            case_number = 3000
+            scenario_vecs = np.random.rand(case_number, 9+3+2)
+
+            # scenario_vecs = np.genfromtxt('surrogate/routes_short_2023-05-31|15:47:49/scenario.csv', delimiter=',')
           
             for scenario_vec in scenario_vecs:
                 leaderboard_evaluator.run_one_case(scenario_vec, config)
@@ -1019,14 +1021,14 @@ def main():
                                             leaderboard_evaluator.run_one_case,
                                             config)
             algorithm = NSGA2(
-                pop_size=50,
-                n_offsprings=10,
+                pop_size=100,
+                n_offsprings=20,
                 sampling=FloatRandomSampling(),
                 crossover=SBX(prob=0.9, eta=15),
                 mutation=PM(eta=20),
                 eliminate_duplicates=True
             )
-            termination = get_termination("n_gen", 35)
+            termination = get_termination("n_gen", 20)
 
             res = minimize(problem,
                algorithm,
