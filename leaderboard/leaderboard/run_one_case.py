@@ -837,12 +837,13 @@ def weather_parser(weather_vec):
     )
 
 class CustomizedProblem(ElementwiseProblem):
-    def __init__(self, fitness_file, fitness_generator, config):
+    def __init__(self, fitness_file, cirtion_file, fitness_generator, config):
         super().__init__(n_var=14,
                          n_obj=3,
                          xl=np.zeros(14),
                          xu=np.ones(14))
-        self.file_name = fitness_file
+        self.fitness_file = fitness_file
+        self.cirtion_file = cirtion_file
         self.fitness_generator = fitness_generator
         self.config = config
 
@@ -864,19 +865,36 @@ class CustomizedProblem(ElementwiseProblem):
             "AgentBlockedTest_figure": 13,      
             "Timeout": 14}
         self.fitness_generator(x, self.config)
-        result = []
-        with open(self.file_name, 'r') as file:
+        result = {
+            'RouteCompletionTest':0,
+            'OutsideRouteLanesTest':0,
+            'CollisionTest':0,
+            'RunningRedLightTest':0,
+            'RunningStopTest':0,
+            'InRouteTest':0,
+            'AgentBlockedTest':0,
+            'Timeout':0
+        }
+        with open(self.cirtion_file, 'r') as file:
             data = [float(item) for item in file.readlines()[-1].strip().split(',')]
-            # result = [1-data[dict_cirtion_index["OutsideRouteLanesTest"]],
-            #           1-data[dict_cirtion_index["CollisionTest"]],
-            #           1-data[dict_cirtion_index["Timeout"]]]
-            result = [1-data[dict_cirtion_index["RunningRedLightTest"]],
-                      1-data[dict_cirtion_index["CollisionTest"]],
-                      1-data[dict_cirtion_index["Timeout"]]]
+            result['RouteCompletionTest']   = data[dict_cirtion_index["RouteCompletionTest_figure"]]/100
+            result['OutsideRouteLanesTest'] = 1-data[dict_cirtion_index["OutsideRouteLanesTest_figure"]]/100
+            result['CollisionTest']         = data[dict_cirtion_index["CollisionTest"]]
+            result['RunningRedLightTest']   = 1-data[dict_cirtion_index["RunningRedLightTest"]]
+            result['RunningStopTest']       = 1-data[dict_cirtion_index["RunningStopTest"]]
+            result['InRouteTest']           = 1-data[dict_cirtion_index["InRouteTest"]]
+            result['AgentBlockedTest']      = 1-data[dict_cirtion_index["AgentBlockedTest"]]
+            result['Timeout']               = 1-data[dict_cirtion_index["Timeout"]]
+
+        with open(self.fitness_file, 'r') as file:
+            data = [float(item) for item in file.readlines()[-1].strip().split(',')] 
+            result['CollisionTest'] = 0 if result['CollisionTest'] == 1 else min(data[1],2)/2
             
-
-
-        out['F'] = result
+        out['F'] = [
+            result['RouteCompletionTest'],
+            result['OutsideRouteLanesTest'],
+            result['CollisionTest']
+        ]
 
 
 class SurrogateProblem(ElementwiseProblem):
@@ -975,7 +993,7 @@ def main():
     print("init statistics_manager")
     statistics_manager = StatisticsManager()
     
-    GA = False
+    GA = True
     surrogate = False
     try:
         
@@ -1017,12 +1035,13 @@ def main():
             else:
                 leaderboard_evaluator = TestCase(arguments, statistics_manager)
                 config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
-                problem = CustomizedProblem(arguments.fitness_path.replace('fitness.csv','criterion.csv'),
+                problem = CustomizedProblem(arguments.fitness_path,
+                                            arguments.fitness_path.replace('fitness.csv','criterion.csv'),
                                             leaderboard_evaluator.run_one_case,
                                             config)
             algorithm = NSGA2(
-                pop_size=100,
-                n_offsprings=20,
+                pop_size=10,
+                n_offsprings=2,
                 sampling=FloatRandomSampling(),
                 crossover=SBX(prob=0.9, eta=15),
                 mutation=PM(eta=20),
