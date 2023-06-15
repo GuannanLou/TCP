@@ -908,19 +908,28 @@ class SurrogateProblem(ElementwiseProblem):
         
 
     def _evaluate(self, x, out, *args, **kwargs):
-        surrogate_models = {"RouteCompletionTest"  : joblib.load('./tools/models/RF-RouteCompletionTest.pkl'), 
-                            "CollisionTest"        : joblib.load('./tools/models/RF-CollisionTest.pkl'), 
-                            "OutsideRouteLanesTest": joblib.load('./tools/models/RF-OutsideRouteLanesTest.pkl'), 
-                            "Timeout"              : joblib.load('./tools/models/RF-Timeout.pkl')}
-        result = [
-            1-surrogate_models["OutsideRouteLanesTest"].predict([x])[0],
-            1-surrogate_models["CollisionTest"].predict([x])[0],
-            1-surrogate_models["Timeout"].predict([x])[0]
-        ]
+        # model_path = './tools/models/'
+        model_path = './tools/models/regression-HGB'
+        surrogate_models = {"RouteCompletionTest"  : joblib.load(model_path+'-RouteCompletionTest.pkl'), 
+                            "CollisionTest"        : joblib.load(model_path+'-CollisionTest.pkl'), 
+                            "OutsideRouteLanesTest": joblib.load(model_path+'-OutsideRouteLanesTest.pkl'), 
+                            "Timeout"              : joblib.load(model_path+'-Timeout.pkl')}
+        # result = [
+        #     1-surrogate_models["OutsideRouteLanesTest"].predict([x])[0],
+        #     1-surrogate_models["CollisionTest"].predict([x])[0],
+        #     1-surrogate_models["Timeout"].predict([x])[0]
+        # ]
+        result = np.array([
+            surrogate_models["OutsideRouteLanesTest"].predict([x])[0],
+            surrogate_models["CollisionTest"].predict([x])[0],
+            surrogate_models["RouteCompletionTest"].predict([x])[0]
+        ])
+        result[result>1] = 1
+        result[result<0] = 0
+        # print(result)
+
         file = open(self.surrogate_path+'criterion.csv', 'a')
-        file.write(','.join([str(item) for item in [surrogate_models["OutsideRouteLanesTest"].predict([x])[0],
-                             surrogate_models["CollisionTest"].predict([x])[0],
-                             surrogate_models["Timeout"].predict([x])[0]]])+'\n')
+        file.write(','.join([str(item) for item in result])+'\n')
         file.close()
 
         file = open(self.surrogate_path+'scenario.csv', 'a')
@@ -993,8 +1002,11 @@ def main():
     print("init statistics_manager")
     statistics_manager = StatisticsManager()
     
-    GA = True
-    surrogate = False
+    GA = False
+    surrogate = True
+    surrogate_scenario = 'surrogate/routes_short_2023-06-13|18:27:28/' 
+
+    # 'surrogate/routes_short_2023-05-31|15:47:49/scenario.csv'
     try:
         
         if not GA: 
@@ -1010,10 +1022,14 @@ def main():
             config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
 
             case_number = 3000
-            scenario_vecs = np.random.rand(case_number, 9+3+2)
+            scenario_vecs = None
+            if surrogate_scenario:
+                scenario_vecs = np.genfromtxt(surrogate_scenario+'scenario.csv', delimiter=',')
+                print(scenario_vecs.shape)
+                print(scenario_vecs[:5])
+            else:    
+                scenario_vecs = np.random.rand(case_number, 9+3+2)
 
-            # scenario_vecs = np.genfromtxt('surrogate/routes_short_2023-05-31|15:47:49/scenario.csv', delimiter=',')
-          
             for scenario_vec in scenario_vecs:
                 leaderboard_evaluator.run_one_case(scenario_vec, config)
             
@@ -1040,14 +1056,14 @@ def main():
                                             leaderboard_evaluator.run_one_case,
                                             config)
             algorithm = NSGA2(
-                pop_size=10,
-                n_offsprings=2,
+                pop_size=50,
+                n_offsprings=10,
                 sampling=FloatRandomSampling(),
                 crossover=SBX(prob=0.9, eta=15),
                 mutation=PM(eta=20),
                 eliminate_duplicates=True
             )
-            termination = get_termination("n_gen", 20)
+            termination = get_termination("n_gen", 35)
 
             res = minimize(problem,
                algorithm,
