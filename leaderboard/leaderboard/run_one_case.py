@@ -28,6 +28,7 @@ import signal
 import torch
 import time
 import joblib
+import dill
 
 from srunner.scenariomanager.carla_data_provider import *
 from srunner.scenariomanager.timer import GameTime
@@ -831,7 +832,8 @@ def weather_parser(weather_vec):
         wind_intensity          = 0 if wi < 0.5 else (wi-0.5)*2*100, 
         sun_azimuth_angle       = 0 if sz < 0.5 else (sz-0.5)*2*360, 
         sun_altitude_angle      = 0 if sl < 0.5 else (sl-0.5)*2*180-90, 
-        fog_density             = 0 if fd < 0.5 else (fd-0.5)*2*100, 
+        # fog_density             = 0 if fd < 0.5 else (fd-0.5)*2*100, 
+        fog_density             = 0, 
         wetness                 = 0 if w  < 0.5 else (w -0.5)*2*100, 
         fog_falloff             = 0 if ff < 0.5 else (ff-0.5)*2*5
     )
@@ -864,6 +866,9 @@ class CustomizedProblem(ElementwiseProblem):
             "AgentBlockedTest": 12,
             "AgentBlockedTest_figure": 13,      
             "Timeout": 14}
+        
+        # x[6] = 0
+
         self.fitness_generator(x, self.config)
         result = {
             'RouteCompletionTest':0,
@@ -909,7 +914,7 @@ class SurrogateProblem(ElementwiseProblem):
 
     def _evaluate(self, x, out, *args, **kwargs):
         # model_path = './tools/models/'
-        model_path = './tools/models/regression-HGB'
+        model_path = './tools/models/regression-Kriging'
         surrogate_models = {"RouteCompletionTest"  : joblib.load(model_path+'-RouteCompletionTest.pkl'), 
                             "CollisionTest"        : joblib.load(model_path+'-CollisionTest.pkl'), 
                             "OutsideRouteLanesTest": joblib.load(model_path+'-OutsideRouteLanesTest.pkl'), 
@@ -1002,9 +1007,11 @@ def main():
     print("init statistics_manager")
     statistics_manager = StatisticsManager()
     
-    GA = False
-    surrogate = True
-    surrogate_scenario = 'surrogate/routes_short_2023-06-13|18:27:28/' 
+    GA = True
+    surrogate = False
+    save_surrogate_log = True
+    surrogate_scenario = None
+    # surrogate_scenario = 'surrogate/routes_short_2023-06-13|18:27:28/' 
 
     # 'surrogate/routes_short_2023-05-31|15:47:49/scenario.csv'
     try:
@@ -1035,6 +1042,14 @@ def main():
             
         else:
             print("NSGAII")
+            pop_size = 50
+            n_offsprings = 10
+            generations = 35
+
+            # pop_size = 2
+            # n_offsprings = 1
+            # generations = 1
+
             arguments.log=False
 
             route_indexer = RouteIndexer(arguments.routes, arguments.scenarios, arguments.repetitions)
@@ -1043,6 +1058,10 @@ def main():
                 config = route_indexer.next()
 
             mkdir('./surrogate/'+arguments.fitness_path.split('/')[1])
+
+            if save_surrogate_log:
+                output_file = './surrogate/'+arguments.fitness_path.split('/')[1]+'/console.log'
+                sys.stdout = open(output_file, 'w')
 
             problem = None
             if surrogate:
@@ -1056,14 +1075,14 @@ def main():
                                             leaderboard_evaluator.run_one_case,
                                             config)
             algorithm = NSGA2(
-                pop_size=50,
-                n_offsprings=10,
+                pop_size=pop_size,
+                n_offsprings=n_offsprings,
                 sampling=FloatRandomSampling(),
                 crossover=SBX(prob=0.9, eta=15),
                 mutation=PM(eta=20),
                 eliminate_duplicates=True
             )
-            termination = get_termination("n_gen", 35)
+            termination = get_termination("n_gen", generations)
 
             res = minimize(problem,
                algorithm,
@@ -1074,11 +1093,20 @@ def main():
 
             X = res.X
             F = res.F
-
             
+            np.savez('./surrogate/'+arguments.fitness_path.split('/')[1]+'/output.npz', X, F)
             np.savez('./surrogate/'+arguments.fitness_path.split('/')[1]+'/output.npz', X, F)
             # print(X, file=open(arguments.fitness_path.replace('fitness.csv','output.txt'),'a'))
             # print(F, file=open(arguments.fitness_path.replace('fitness.csv','output.txt'),'a'))
+
+            # with open('./surrogate/'+arguments.fitness_path.split('/')[1]+'/checkpoint.ckpt', "wb") as f:
+            #     dill.dump(algorithm, f)
+            # with open('./surrogate/'+arguments.fitness_path.split('/')[1]+'/result.res', "wb") as f:
+            #     dill.dump(res, f)
+
+            if save_surrogate_log:
+                sys.stdout.close()
+                sys.stdout = sys.__stdout__
 
     except Exception as e:
         traceback.print_exc()

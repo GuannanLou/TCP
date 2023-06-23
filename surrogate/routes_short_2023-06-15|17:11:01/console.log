@@ -1,0 +1,5 @@
+trying to create rpc server for traffic manager; but the system failed to create because of bind error.
+
+[91mThe scenario could not be loaded:
+> 'TestCase' object has no attribute 'traffic_manager'[0m
+
