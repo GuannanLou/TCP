@@ -29,6 +29,8 @@ import torch
 import time
 import joblib
 import dill
+import pathlib
+
 
 from srunner.scenariomanager.carla_data_provider import *
 from srunner.scenariomanager.timer import GameTime
@@ -1007,7 +1009,10 @@ def main():
     print("init statistics_manager")
     statistics_manager = StatisticsManager()
     
-    GA = True
+    pathlib.Path(os.environ['SAVE_PATH']).mkdir()
+
+
+    GA = False
     surrogate = False
     save_surrogate_log = True
     surrogate_scenario = None
@@ -1028,7 +1033,7 @@ def main():
             
             config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
 
-            case_number = 3000
+            case_number = 5
             scenario_vecs = None
             if surrogate_scenario:
                 scenario_vecs = np.genfromtxt(surrogate_scenario+'scenario.csv', delimiter=',')

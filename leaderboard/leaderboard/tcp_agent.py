@@ -23,7 +23,7 @@ from planner import RoutePlanner
 
 
 SAVE_PATH = os.environ.get('SAVE_PATH', None)
-
+SAVE_IMG = os.environ.get('SAVE_IMG', None) 
 
 def get_entry_point():
 	return 'TCPAgent'
@@ -67,18 +67,19 @@ class TCPAgent(autonomous_agent.AutonomousAgent):
 
 		self.last_steers = deque()
 		if SAVE_PATH is not None:
-			now = datetime.datetime.now()
-			string = pathlib.Path(os.environ['ROUTES']).stem + '_'
-			string += '_'.join(map(lambda x: '%02d' % x, (now.month, now.day, now.hour, now.minute, now.second)))
+			if SAVE_IMG != 'False':
+				now = datetime.datetime.now()
+				string = pathlib.Path(os.environ['ROUTES']).stem + '_'
+				string += '_'.join(map(lambda x: '%02d' % x, (now.month, now.day, now.hour, now.minute, now.second)))
 
-			# print (string)
+				# print (string)
 
-			self.save_path = pathlib.Path(os.environ['SAVE_PATH']) / string
-			self.save_path.mkdir(parents=True, exist_ok=False)
-
-			(self.save_path / 'rgb').mkdir()
-			(self.save_path / 'meta').mkdir()
-			(self.save_path / 'bev').mkdir()
+				self.save_path = pathlib.Path(os.environ['SAVE_PATH']) / string
+				self.save_path.mkdir(parents=True, exist_ok=False)
+				
+				(self.save_path / 'rgb').mkdir()
+				(self.save_path / 'meta').mkdir()
+				(self.save_path / 'bev').mkdir()
 
 	def _init(self):
 		self._route_planner = RoutePlanner(4.0, 50.0)
@@ -253,7 +254,9 @@ class TCPAgent(autonomous_agent.AutonomousAgent):
 		self.pid_metadata['status'] = self.status
 
 		if SAVE_PATH is not None and self.step % 10 == 0:
-			self.save(tick_data)
+			if SAVE_IMG != 'False':
+				print('save', 'SAVE_IMG', SAVE_IMG)
+				self.save(tick_data)
 		return control
 
 	def save(self, tick_data):
