@@ -298,7 +298,9 @@ class RouteScenario(BasicScenario):
 		self.sampled_scenarios_definitions = self._scenario_sampling(potential_scenarios_definitions)
 
 		# Timeout of scenario in seconds
-		self.timeout = self._estimate_route_timeout()
+		# self.timeout = self._estimate_route_timeout()
+		self.timeout = self._estimate_route_timeout()/2
+		# print(self.timeout)
 
 		# Mode of other vehicle
 		## 0: auto

@@ -255,7 +255,7 @@ class TCPAgent(autonomous_agent.AutonomousAgent):
 
 		if SAVE_PATH is not None and self.step % 10 == 0:
 			if SAVE_IMG != 'False':
-				print('save', 'SAVE_IMG', SAVE_IMG)
+				# print('save', 'SAVE_IMG', SAVE_IMG)
 				self.save(tick_data)
 		return control
 

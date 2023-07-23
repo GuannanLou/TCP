@@ -261,6 +261,7 @@ class TestCase(object):
 
         self.world.reset_all_traffic_lights()
 
+        # print(weather)
         CarlaDataProvider.set_client(self.client)
         CarlaDataProvider.set_world(self.world)
         CarlaDataProvider.set_traffic_manager_port(int(args.trafficManagerPort))
@@ -746,6 +747,7 @@ class TestCase(object):
         
         config.vehicle_infront, config.vehicle_opposite, config.vehicle_side = other_vehicle_parser(config.other_vehicle_vec)
         config.weather = weather_parser(config.weather_vec)
+        # print(config.weather)
 
         if self.args.log:
             print()
@@ -834,8 +836,8 @@ def weather_parser(weather_vec):
         wind_intensity          = 0 if wi < 0.5 else (wi-0.5)*2*100, 
         sun_azimuth_angle       = 0 if sz < 0.5 else (sz-0.5)*2*360, 
         sun_altitude_angle      = 0 if sl < 0.5 else (sl-0.5)*2*180-90, 
-        # fog_density             = 0 if fd < 0.5 else (fd-0.5)*2*100, 
-        fog_density             = 0, 
+        fog_density             = 0 if fd < 0.5 else (fd-0.5)*2*100, 
+        # fog_density             = 80, 
         wetness                 = 0 if w  < 0.5 else (w -0.5)*2*100, 
         fog_falloff             = 0 if ff < 0.5 else (ff-0.5)*2*5
     )
@@ -947,7 +949,7 @@ class SurrogateProblem(ElementwiseProblem):
 
 
 def mkdir(path):
-    print(path)
+    # print(path)
     folder = os.path.exists(path)
     if not folder:
         os.makedirs(path)
@@ -1019,6 +1021,7 @@ def main():
     # surrogate_scenario = 'surrogate/routes_short_2023-06-13|18:27:28/' 
 
     # 'surrogate/routes_short_2023-05-31|15:47:49/scenario.csv'
+    # surrogate_scenario = 'data/routes_short_2023-06-16|07:52:55/'
     try:
         
         if not GA: 
@@ -1033,23 +1036,58 @@ def main():
             
             config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
 
-            case_number = 5
+            case_number = 3000
             scenario_vecs = None
             if surrogate_scenario:
-                scenario_vecs = np.genfromtxt(surrogate_scenario+'scenario.csv', delimiter=',')
+                # scenario_vecs = np.genfromtxt(surrogate_scenario+'scenario.csv', delimiter=',')[-10:]
+                # scenario_vecs = np.genfromtxt(surrogate_scenario+'scenario.csv', delimiter=',')[[-1]*10]
                 print(scenario_vecs.shape)
                 print(scenario_vecs[:5])
             else:    
                 scenario_vecs = np.random.rand(case_number, 9+3+2)
+                # scenario_vecs = np.array(
+                #     [[0.05352148, 0.56643706, 0.85212685, 0.92456929, 0.50729455,
+                #         0.13446351, 0.74570565, 0.84009522, 0.87444851, 0.97638516,
+                #         0.1096712 , 0.64214943, 0.45261398, 0.1396596 ],
+                #     [0.25351448, 0.08812581, 0.85883995, 0.81341905, 0.52526959,
+                #         0.81160189, 0.57620638, 0.27738965, 0.80282776, 0.18605579,
+                #         0.56855077, 0.65772086, 0.13858748, 0.50868337],
+                #     [0.56957398, 0.9569505 , 0.8389506 , 0.32457515, 0.15553746,
+                #         0.78511084, 0.37971402, 0.57111563, 0.44561479, 0.88959136,
+                #         0.77315261, 0.41829759, 0.14663282, 0.50875594]]
+                # )
+
+                
+                scenario_vecs = np.array(
+                    [[0.59777615, 0.72223506, 0.12374883, 0.30677363, 0.70592351,
+                        0.80276719, 0.79815411, 0.84394874, 0.01639043, 0.74687154,
+                        0.54046098, 0.68564598, 0.21594995, 0.10060122],
+                    [0.39718882, 0.08087786, 0.37792418, 0.07962608, 0.98978885,
+                        0.85734188, 0.9852377 , 0.87401614, 0.68767837, 0.52781966,
+                        0.49976442, 0.681722  , 0.34517205, 0.95409391],
+                    [0.34050009, 0.7266114 , 0.65643148, 0.52285901, 0.90019775,
+                        0.77005633, 0.98038164, 0.8759482 , 0.40710583, 0.45522409,
+                        0.81124623, 0.92224074, 0.19620584, 0.84855626],
+                    [0.91695837, 0.72107255, 0.3723671 , 0.28326   , 0.76679765,
+                        0.00376423, 0.96084713, 0.86335041, 0.76311738, 0.72054708,
+                        0.51065933, 0.69450803, 0.21293915, 0.76181747],
+                    [0.35233707, 0.75028226, 0.10965908, 0.87967191, 0.70753986,
+                        0.84855801, 0.98681216, 0.88160435, 0.39627272, 0.76438451,
+                        0.69382362, 0.7107312 , 0.238529  , 0.97225962]]
+                )
 
             for scenario_vec in scenario_vecs:
                 leaderboard_evaluator.run_one_case(scenario_vec, config)
             
         else:
             print("NSGAII")
+            # pop_size = 50
+            # n_offsprings = 10
+            # generations = 35
+
             pop_size = 50
-            n_offsprings = 10
-            generations = 35
+            n_offsprings = 15
+            generations = 56
 
             # pop_size = 2
             # n_offsprings = 1
