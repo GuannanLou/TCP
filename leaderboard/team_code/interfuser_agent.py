@@ -33,6 +33,7 @@ except ImportError:
 
 
 SAVE_PATH = os.environ.get("SAVE_PATH", 'eval')
+SAVE_IMG = os.environ.get("SAVE_IMG", 'False')
 IMAGENET_DEFAULT_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
 
@@ -224,8 +225,6 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
                     (now.month, now.day, now.hour, now.minute, now.second),
                 )
             )
-
-            print(string)
 
             self.save_path = pathlib.Path(SAVE_PATH) / string
             self.save_path.mkdir(parents=True, exist_ok=False)
@@ -574,7 +573,8 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
         tick_data["surface"] = surface
 
         if SAVE_PATH is not None:
-            self.save(tick_data)
+            if SAVE_IMG != 'False':
+                self.save(tick_data)
 
         return control
 

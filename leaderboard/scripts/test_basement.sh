@@ -20,8 +20,17 @@ export RESUME=True
 export AGENT_MODE=0
 
 export DATA_COLLECTION=True
+
 # export SAVE_IMG=False
 export SAVE_IMG=True
+export GA=True
+
+
+
+
+
+
+SAVE_IMG_TEXT=$(if [ "$SAVE_IMG" = "True" ]; then echo "SAVE_IMG"; else echo "NONE_IMG"; fi)
 
 export ROUTE_FILE=routes_short
 current_time=$(date "+%Y-%m-%d|%H:%M:%S")
@@ -35,20 +44,26 @@ current_time=$(date "+%Y-%m-%d|%H:%M:%S")
 # export SAVE_PATH=data/${ROUTE_FILE}_${current_time}/
 
 
-# TCP evaluation
-# export ROUTES=leaderboard/data/evaluation_routes/routes_lav_valid.xml
+MODEL=$1
+# MODEL="InterFuser"
+if [ "$MODEL" = "TCP" ]; then
+    echo "TCP"
+    export TEAM_AGENT=team_code/tcp_agent.py
+    export TEAM_CONFIG=TCP/epoch=59-last.ckpt
+elif [ "$MODEL" = "InterFuser" ]; then
+    echo "InterFuser"
+    export TEAM_AGENT=leaderboard/team_code/interfuser_agent.py # agent
+    export TEAM_CONFIG=leaderboard/team_code/interfuser_config.py # model checkpoint, not required for expert
+else
+    echo "Please include the ADS to be tested (TCP, InterFuser)"
+    exit 1
+fi
+
 export ROUTES=leaderboard/data/TCP_training_routes/${ROUTE_FILE}.xml
-
-export TEAM_AGENT=team_code/tcp_agent.py
-export TEAM_CONFIG=TCP/epoch=59-last.ckpt
-
-# export TEAM_AGENT=leaderboard/team_code/interfuser_agent.py # agent
-# export TEAM_CONFIG=leaderboard/team_code/interfuser_config.py # model checkpoint, not required for expert
-
 export CHECKPOINT_ENDPOINT=data_collect_${ROUTE_FILE}_${current_time}.json
 export SCENARIOS=leaderboard/data/scenarios/all_towns_traffic_scenarios.json
 # export SAVE_PATH=data/results_TCP/
-export SAVE_PATH=data/${ROUTE_FILE}_${current_time}/
+export SAVE_PATH=../SBT-data/${MODEL}/${current_time}--${SAVE_IMG_TEXT}/
 
 
 # export RECORD_PATH=./

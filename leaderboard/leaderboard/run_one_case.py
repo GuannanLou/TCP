@@ -1075,6 +1075,7 @@ def main():
                         0.84855801, 0.98681216, 0.88160435, 0.39627272, 0.76438451,
                         0.69382362, 0.7107312 , 0.238529  , 0.97225962]]
                 )
+                print(scenario_vecs)
 
             for scenario_vec in scenario_vecs:
                 leaderboard_evaluator.run_one_case(scenario_vec, config)
@@ -1086,8 +1087,8 @@ def main():
             # generations = 35
 
             pop_size = 50
-            n_offsprings = 15
-            generations = 56
+            n_offsprings = 10
+            generations = 76
 
             # pop_size = 2
             # n_offsprings = 1
@@ -1100,16 +1101,16 @@ def main():
             while route_indexer.peek():
                 config = route_indexer.next()
 
-            mkdir('./surrogate/'+arguments.fitness_path.split('/')[1])
+            mkdir('./data/'+arguments.fitness_path.split('/')[1])
 
             if save_surrogate_log:
-                output_file = './surrogate/'+arguments.fitness_path.split('/')[1]+'/console.log'
+                output_file = './data/'+arguments.fitness_path.split('/')[1]+'/console.log'
                 sys.stdout = open(output_file, 'w')
 
             problem = None
             if surrogate:
                 print('surrogate')
-                problem = SurrogateProblem(config, surrogate_path='./surrogate/'+arguments.fitness_path.split('/')[1]+'/')
+                problem = SurrogateProblem(config, surrogate_path='./data/'+arguments.fitness_path.split('/')[1]+'/')
             else:
                 leaderboard_evaluator = TestCase(arguments, statistics_manager)
                 config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
@@ -1137,15 +1138,11 @@ def main():
             X = res.X
             F = res.F
             
-            np.savez('./surrogate/'+arguments.fitness_path.split('/')[1]+'/output.npz', X, F)
-            np.savez('./surrogate/'+arguments.fitness_path.split('/')[1]+'/output.npz', X, F)
-            # print(X, file=open(arguments.fitness_path.replace('fitness.csv','output.txt'),'a'))
-            # print(F, file=open(arguments.fitness_path.replace('fitness.csv','output.txt'),'a'))
+            print(X)
+            print(F)
 
-            # with open('./surrogate/'+arguments.fitness_path.split('/')[1]+'/checkpoint.ckpt', "wb") as f:
-            #     dill.dump(algorithm, f)
-            # with open('./surrogate/'+arguments.fitness_path.split('/')[1]+'/result.res', "wb") as f:
-            #     dill.dump(res, f)
+            np.savez('./data/'+arguments.fitness_path.split('/')[1]+'/output.npz', X, F)
+
 
             if save_surrogate_log:
                 sys.stdout.close()
