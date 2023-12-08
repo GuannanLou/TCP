@@ -314,7 +314,6 @@ class RouteScenario(BasicScenario):
 			if self.agent_mod == 1:
 				self._draw_waypoints_location(world, self.other_vehicle_waypoints, vertical_shift=1.0, persistency=50000.0)
 
-
 	def _update_ego_vehicle(self):
 		"""
 		Set/Update the start position of the ego_vehicle

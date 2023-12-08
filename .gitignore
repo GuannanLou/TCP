@@ -1,3 +1,4 @@
+./scenario_runner/*
 data/*
 **/*.pyc
 **/__pycache__/
@@ -15,3 +16,4 @@ TCP/ckpt/epoch=59-last.ckpt
 TCP/ckpt/best_epoch=17-val_loss=0.699.ckpt
 TCP/ckpt/best_epoch=26-val_loss=0.699.ckpt
 leaderboard/team_code/interfuser.pth.tar
+scenario_runner/.gitignore

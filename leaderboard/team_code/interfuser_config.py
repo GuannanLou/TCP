@@ -21,6 +21,7 @@ class GlobalConfig:
     clip_delta = 0.35  # maximum change in speed input to logitudinal controller
 
     max_speed = 5
+    # max_speed = 50
     collision_buffer = [2.5, 1.2]
     model_path = "leaderboard/team_code/interfuser.pth.tar"
     momentum = 0

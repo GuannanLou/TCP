@@ -30,6 +30,7 @@ import time
 import joblib
 import dill
 import pathlib
+import numpy as np
 
 
 from srunner.scenariomanager.carla_data_provider import *
@@ -53,7 +54,10 @@ from pymoo.operators.sampling.rnd import FloatRandomSampling
 from pymoo.termination import get_termination
 from pymoo.optimize import minimize
 
-import numpy as np
+from SBT.scenario_parser import ego_vehicle_parser, other_vehicle_parser, weather_parser 
+from SBT.problem import CustomizedProblem, SurrogateProblem
+from SBT.framework import search_based_testing
+
 
 
 sensors_to_icons = {
@@ -329,7 +333,6 @@ class TestCase(object):
                 self.statistics_manager.save_sensors(self.sensor_icons, args.checkpoint)
 
             self._agent_watchdog.stop()
-
         except SensorConfigurationInvalid as e:
             # The sensors are invalid -> set the ejecution to rejected and stop
             print("\n\033[91mThe sensor's configuration used is invalid:")
@@ -342,7 +345,6 @@ class TestCase(object):
             self._register_statistics(config, args.checkpoint, entry_status, crash_message)
             self._cleanup()
             sys.exit(-1)
-
         except Exception as e:
             # The agent setup has failed -> start the next route
             print("\n\033[91mCould not set up the required agent:")
@@ -357,6 +359,7 @@ class TestCase(object):
 
         if self.args.log:
             print("\033[1m> Loading the world\033[0m")
+        
         # Load the world and the scenario
         try:
             self._load_and_wait_for_world(args, config.town, config.weather)
@@ -376,7 +379,7 @@ class TestCase(object):
                 waypoints = self.get_waypoints(start_location)
                 scenario = RouteScenario(world=self.world, config=config, debug_mode=args.debug, agent_mode=args.agent_mode, waypoints=waypoints)# add vehicle in this line
             elif args.agent_mode == 0:
-                current_map = CarlaDataProvider.get_map()
+                # current_map = CarlaDataProvider.get_map()
 
                 # print('+++++++++++++++++')
                 # all_roads = current_map.get_topology() 
@@ -405,20 +408,117 @@ class TestCase(object):
                 numb_other_vehicle = 0
                 waypoint_other_vehicle = []
 
-                if config.vehicle_infront:
-                    test_waypoint = current_waypoint.next(7)[-1]
+                region = 7
+                ## region = 14
 
-                    if test_waypoint:
+                if config.vehicle_infront:
+                    print('##current vehicle:', current_waypoint)
+
+                    test_waypoint = current_waypoint
+                    count = 0
+                    while test_waypoint and count < 20:
+                        print(test_waypoint)
+                        test_waypoint = test_waypoint.next(region)[-1]
                         numb_other_vehicle += 1
+
                         if self.args.log:
                             print('----VEHICLE-INFRONT----')
                         # print('##current vehicle:', current_waypoint)
                         # print('####other vehicle:', test_waypoint)
 
                         waypoint_other_vehicle.append(test_waypoint)
-                    else:
-                        if self.args.log:
-                            print("!!!!! Add vehicle infront failed")
+                        count += 1
+                    print(count)
+
+                    test_waypoint = current_waypoint
+                    count = 0
+                    while test_waypoint and count < 20:
+                        test_waypoint = test_waypoint.previous(region)[-1]
+                        numb_other_vehicle += 1
+
+                        # print('##current vehicle:', current_waypoint)
+                        # print('####other vehicle:', test_waypoint)
+
+                        waypoint_other_vehicle.append(test_waypoint)
+                        count += 1
+                    print(count)
+
+
+                    count = 0
+                    road = self._get_road(current_waypoint.get_right_lane())
+                    # road_end = road[-1]
+                    test_waypoint = road[0]
+                    
+                    while test_waypoint and count < 20:
+                        test_waypoint = test_waypoint.next(region)[-1]
+                        numb_other_vehicle += 1
+
+                        waypoint_other_vehicle.append(test_waypoint)
+                        count += 1
+                    print(count)
+
+                    count = 0
+                    road = self._get_road(current_waypoint.get_right_lane())
+                    # road_end = road[-1]
+                    test_waypoint = road[0]
+                    
+                    while test_waypoint and count < 20:
+                        test_waypoint = test_waypoint.next(region)[-1]
+                        numb_other_vehicle += 1
+
+                        waypoint_other_vehicle.append(test_waypoint)
+                        count += 1
+                    print(count)
+
+                    count = 0
+                    road = self._get_road(current_waypoint.get_left_lane().get_right_lane())
+                    # road_end = road[-1]
+                    test_waypoint = road[0]
+                    
+                    while test_waypoint and count < 20:
+                        test_waypoint = test_waypoint.next(region)[-1]
+                        numb_other_vehicle += 1
+
+                        waypoint_other_vehicle.append(test_waypoint)
+                        count += 1
+                    print(count)
+
+                    count = 0
+                    road = self._get_road(current_waypoint.get_left_lane().get_right_lane().get_right_lane())
+                    # road_end = road[-1]
+                    test_waypoint = road[0]
+                    
+                    while test_waypoint and count < 20:
+                        test_waypoint = test_waypoint.next(region)[-1]
+                        numb_other_vehicle += 1
+
+                        waypoint_other_vehicle.append(test_waypoint)
+                        count += 1
+                    print(count)
+                    # test_waypoint = current_waypoint.get_left_lane()
+                    # count = 0
+                    # while test_waypoint and count < 20:
+                    #     test_waypoint = test_waypoint.previous(region)[-1]
+                    #     numb_other_vehicle += 1
+
+                    #     # print('##current vehicle:', current_waypoint)
+                    #     # print('####other vehicle:', test_waypoint)
+
+                    #     waypoint_other_vehicle.append(test_waypoint)
+                    #     count += 1
+                    # print(count)
+
+                    # if test_waypoint:
+                    #     numb_other_vehicle += 1
+                    #     if self.args.log:
+                    #         print('----VEHICLE-INFRONT----')
+                    #     # print('##current vehicle:', current_waypoint)
+                    #     # print('####other vehicle:', test_waypoint)
+
+                    #     waypoint_other_vehicle.append(test_waypoint)
+                    # else:
+                    #     if self.args.log:
+                    #         print("!!!!! Add vehicle infront failed")
 
                 if config.vehicle_side:
                     test_waypoint = current_waypoint.get_right_lane()
@@ -604,7 +704,6 @@ class TestCase(object):
 
         return road
  
-
     def _draw_road(self, world, current_waypoint, road, vertical_shift, persistency=-1):
         """
         Draw a list of waypoints at a certain height given in vertical_shift.
@@ -623,8 +722,6 @@ class TestCase(object):
         world.debug.draw_point(road[-1].transform.location + carla.Location(z=vertical_shift), size=0.2,
                                 color=carla.Color(255, 0, 0), life_time=persistency)
         
-
-
     def get_waypoints(self, start_location):
         
         actor_location = carla.Location(start_location.x - 55,
@@ -659,7 +756,7 @@ class TestCase(object):
         """
         Run the challenge mode
         """
-
+        
         route_indexer = RouteIndexer(args.routes, args.scenarios, args.repetitions)
 
         if args.resume:
@@ -703,9 +800,11 @@ class TestCase(object):
                 config.weather_vec = scenario_vec[0:9]
                 config.other_vehicle_vec = scenario_vec[9:9+3]
                 config.ego_vehicle_vec = scenario_vec[9+3:9+3+2] #update should be later, as we donot have map in it
-                # config.other_vehicle_vec = [1,1,1]
+                config.other_vehicle_vec = [1,1,1]
                 # config.ego_vehicle_vec = [1,0]
                 # config.weather_vec  = [0,0,0,0,0,0,0,0,0]
+                print(config.weather_vec, config.other_vehicle_vec)
+
 
                 config.vehicle_infront, config.vehicle_opposite, config.vehicle_side = other_vehicle_parser(config.other_vehicle_vec)
                 config.weather = weather_parser(config.weather_vec)
@@ -732,11 +831,11 @@ class TestCase(object):
         global_stats_record = self.statistics_manager.compute_global_statistics(route_indexer.total)
         StatisticsManager.save_global_record(global_stats_record, self.sensor_icons, route_indexer.total, args.checkpoint)
 
-
     def run_one_case(self, scenario_vec, config):
         """
         Run the challenge mode
         """
+        print('run_one_case')
         # 9 weather, 3 other vehicle, 2 position offset
         config.repetition_index = 0
         start_time = time.time() 
@@ -745,6 +844,11 @@ class TestCase(object):
         config.other_vehicle_vec = scenario_vec[9:9+3]
         config.ego_vehicle_vec = scenario_vec[9+3:9+3+2] #update should be later, as we donot have map in it
         
+        config.other_vehicle_vec = [1,0,0]
+        config.ego_vehicle_vec = [1,0]
+        config.weather_vec  = [0,0,0,0,0,0,0,0,0]
+        print(config.weather_vec+config.other_vehicle_vec+config.ego_vehicle_vec)
+
         config.vehicle_infront, config.vehicle_opposite, config.vehicle_side = other_vehicle_parser(config.other_vehicle_vec)
         config.weather = weather_parser(config.weather_vec)
         # print(config.weather)
@@ -768,193 +872,12 @@ class TestCase(object):
 
 
 
-def ego_vehicle_parser(trajectory, ego_vehicle_vec, current_map, offset_range = 50):
-    # start_location, end_location = trajectory
-    result = []
-    for i, location in enumerate(trajectory):
-
-        waypoint = current_map.get_waypoint(location)
-        offset = ego_vehicle_vec[i]
-        start_direction = waypoint.transform.rotation.yaw % 360
-
-        # print(waypoint.transform.location)
-        # print('direction :', start_direction, waypoint.transform.rotation.yaw)
-        # print('offset_vec:', offset)
-        # print('offset    :', offset*offset_range - offset_range/2)
-
-        if start_direction > 315 or start_direction < 45:
-            new_location = carla.Location(x = location.x + offset*offset_range - offset_range/2,
-                                          y = location.y,
-                                          z = location.z)
-        elif start_direction > 225:
-            new_location = carla.Location(x = location.x,
-                                          y = location.y - offset*offset_range + offset_range/2,
-                                          z = location.z)
-        elif start_direction > 135:
-            new_location = carla.Location(x = location.x - offset*offset_range + offset_range/2,
-                                          y = location.y,
-                                          z = location.z)
-        elif start_direction > 45: # Current road is in this direction. It is right.
-            new_location = carla.Location(x = location.x,
-                                          y = location.y + offset*offset_range - offset_range/2,
-                                          z = location.z)
-        # print('Old:', location)
-        # print('New:', new_location)
-        # print()
-        result.append(new_location)
-
-    return result
-
-
-def other_vehicle_parser(other_vehicle_vec):
-    result = [] 
-    for flag in other_vehicle_vec:
-        if flag >= 0.5:
-            result.append(True)
-        else:
-            result.append(False)
-        
-    return result
-
-
-
-def weather_parser(weather_vec):
-    '''
-    Converts a 9-length array of 0-1 numbers to a CARLA weather parameter object.
-
-    Args:
-        weather_vec (list): a 9-length array of 0-1 numbers
-    
-    Returns:
-        carla.WeatherParameters
-    '''
-    c, p, pd, wi, sz, sl, fd, w, ff = weather_vec 
-    return carla.WeatherParameters(
-        cloudiness              = 0 if c  < 0.5 else (c -0.5)*2*100, 
-        precipitation           = 0 if p  < 0.5 else (p -0.5)*2*100, 
-        precipitation_deposits  = 0 if pd < 0.5 else (pd-0.5)*2*100, 
-        wind_intensity          = 0 if wi < 0.5 else (wi-0.5)*2*100, 
-        sun_azimuth_angle       = 0 if sz < 0.5 else (sz-0.5)*2*360, 
-        sun_altitude_angle      = 0 if sl < 0.5 else (sl-0.5)*2*180-90, 
-        fog_density             = 0 if fd < 0.5 else (fd-0.5)*2*100, 
-        # fog_density             = 80, 
-        wetness                 = 0 if w  < 0.5 else (w -0.5)*2*100, 
-        fog_falloff             = 0 if ff < 0.5 else (ff-0.5)*2*5
-    )
-
-class CustomizedProblem(ElementwiseProblem):
-    def __init__(self, fitness_file, cirtion_file, fitness_generator, config):
-        super().__init__(n_var=14,
-                         n_obj=3,
-                         xl=np.zeros(14),
-                         xu=np.ones(14))
-        self.fitness_file = fitness_file
-        self.cirtion_file = cirtion_file
-        self.fitness_generator = fitness_generator
-        self.config = config
-
-
-    def _evaluate(self, x, out, *args, **kwargs):
-        dict_cirtion_index = {"RouteCompletionTest": 0,   
-            "RouteCompletionTest_figure": 1,
-            "OutsideRouteLanesTest": 2, 
-            "OutsideRouteLanesTest_figure": 3,
-            "CollisionTest": 4,         
-            "CollisionTest_figure": 5,
-            "RunningRedLightTest": 6,   
-            "RunningRedLightTest_figure": 7,
-            "RunningStopTest": 8,       
-            "RunningStopTest_figure": 9,
-            "InRouteTest": 10, 
-            "InRouteTest_figure": 11,          
-            "AgentBlockedTest": 12,
-            "AgentBlockedTest_figure": 13,      
-            "Timeout": 14}
-        
-        # x[6] = 0
-
-        self.fitness_generator(x, self.config)
-        result = {
-            'RouteCompletionTest':0,
-            'OutsideRouteLanesTest':0,
-            'CollisionTest':0,
-            'RunningRedLightTest':0,
-            'RunningStopTest':0,
-            'InRouteTest':0,
-            'AgentBlockedTest':0,
-            'Timeout':0
-        }
-        with open(self.cirtion_file, 'r') as file:
-            data = [float(item) for item in file.readlines()[-1].strip().split(',')]
-            result['RouteCompletionTest']   = data[dict_cirtion_index["RouteCompletionTest_figure"]]/100
-            result['OutsideRouteLanesTest'] = 1-data[dict_cirtion_index["OutsideRouteLanesTest_figure"]]/100
-            result['CollisionTest']         = data[dict_cirtion_index["CollisionTest"]]
-            result['RunningRedLightTest']   = 1-data[dict_cirtion_index["RunningRedLightTest"]]
-            result['RunningStopTest']       = 1-data[dict_cirtion_index["RunningStopTest"]]
-            result['InRouteTest']           = 1-data[dict_cirtion_index["InRouteTest"]]
-            result['AgentBlockedTest']      = 1-data[dict_cirtion_index["AgentBlockedTest"]]
-            result['Timeout']               = 1-data[dict_cirtion_index["Timeout"]]
-
-        with open(self.fitness_file, 'r') as file:
-            data = [float(item) for item in file.readlines()[-1].strip().split(',')] 
-            result['CollisionTest'] = 0 if result['CollisionTest'] == 1 else min(data[1],2)/2
-            
-        out['F'] = [
-            result['RouteCompletionTest'],
-            result['OutsideRouteLanesTest'],
-            result['CollisionTest']
-        ]
-
-
-class SurrogateProblem(ElementwiseProblem):
-    def __init__(self, config, surrogate_path):
-        super().__init__(n_var=14,
-                         n_obj=3,
-                         xl=np.zeros(14),
-                         xu=np.ones(14))
-        self.config = config
-        self.surrogate_path = surrogate_path
-        
-
-    def _evaluate(self, x, out, *args, **kwargs):
-        # model_path = './tools/models/'
-        model_path = './tools/models/regression-Kriging'
-        surrogate_models = {"RouteCompletionTest"  : joblib.load(model_path+'-RouteCompletionTest.pkl'), 
-                            "CollisionTest"        : joblib.load(model_path+'-CollisionTest.pkl'), 
-                            "OutsideRouteLanesTest": joblib.load(model_path+'-OutsideRouteLanesTest.pkl'), 
-                            "Timeout"              : joblib.load(model_path+'-Timeout.pkl')}
-        # result = [
-        #     1-surrogate_models["OutsideRouteLanesTest"].predict([x])[0],
-        #     1-surrogate_models["CollisionTest"].predict([x])[0],
-        #     1-surrogate_models["Timeout"].predict([x])[0]
-        # ]
-        result = np.array([
-            surrogate_models["OutsideRouteLanesTest"].predict([x])[0],
-            surrogate_models["CollisionTest"].predict([x])[0],
-            surrogate_models["RouteCompletionTest"].predict([x])[0]
-        ])
-        result[result>1] = 1
-        result[result<0] = 0
-        # print(result)
-
-        file = open(self.surrogate_path+'criterion.csv', 'a')
-        file.write(','.join([str(item) for item in result])+'\n')
-        file.close()
-
-        file = open(self.surrogate_path+'scenario.csv', 'a')
-        file.write(','.join([str(item) for item in x])+'\n')
-        file.close()
-
-        out['F'] = result
-
-
 def mkdir(path):
     # print(path)
     folder = os.path.exists(path)
     if not folder:
         os.makedirs(path)
     
- 
 
 def main():
     description = "CARLA AD Leaderboard Evaluation: evaluate your Agent in CARLA scenarios\n"
@@ -1006,153 +929,159 @@ def main():
                         help="Path for fitness.csv")
     parser.add_argument('--agent_mode', type=int, help='Run with debug output', default=1)
 
-
     arguments = parser.parse_args()
     print("init statistics_manager")
-    statistics_manager = StatisticsManager()
     
+    arguments.log=True
     pathlib.Path(os.environ['SAVE_PATH']).mkdir()
+    log = os.environ['LOG']==True
+    surrogate = os.environ['SURROGATE']==True
 
+    statistics_manager = StatisticsManager()
+    route_indexer = RouteIndexer(arguments.routes, arguments.scenarios, arguments.repetitions)
+    leaderboard_evaluator = TestCase(arguments, statistics_manager) if not surrogate else None
 
-    GA = False
-    surrogate = False
-    save_surrogate_log = True
-    surrogate_scenario = None
-    # surrogate_scenario = 'surrogate/routes_short_2023-06-13|18:27:28/' 
+    search_based_testing(arguments, leaderboard_evaluator, route_indexer)
 
-    # 'surrogate/routes_short_2023-05-31|15:47:49/scenario.csv'
-    # surrogate_scenario = 'data/routes_short_2023-06-16|07:52:55/'
-    try:
+    # GA = False
+    # surrogate = False
+    # save_surrogate_log = True
+    # surrogate_scenario = None
+    # # surrogate_scenario = 'surrogate/routes_short_2023-06-13|18:27:28/' 
+
+    # # 'surrogate/routes_short_2023-05-31|15:47:49/scenario.csv'
+    # # surrogate_scenario = 'data/routes_short_2023-06-16|07:52:55/'
+    # try:
         
-        if not GA: 
-            print("begin")
-            # leaderboard_evaluator.run(arguments)
-            arguments.log=True
-            leaderboard_evaluator = TestCase(arguments, statistics_manager)
-            route_indexer = RouteIndexer(arguments.routes, arguments.scenarios, arguments.repetitions)
-            config = None
-            while route_indexer.peek():
-                config = route_indexer.next()
+    #     if not GA: 
+    #         print("begin")
+    #         # leaderboard_evaluator.run(arguments)
+    #         arguments.log=True
+    #         leaderboard_evaluator = TestCase(arguments, statistics_manager)
+    #         route_indexer = RouteIndexer(arguments.routes, arguments.scenarios, arguments.repetitions)
+    #         config = None
+    #         while route_indexer.peek():
+    #             config = route_indexer.next()
             
-            config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
+    #         config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
 
-            case_number = 3000
-            scenario_vecs = None
-            if surrogate_scenario:
-                # scenario_vecs = np.genfromtxt(surrogate_scenario+'scenario.csv', delimiter=',')[-10:]
-                # scenario_vecs = np.genfromtxt(surrogate_scenario+'scenario.csv', delimiter=',')[[-1]*10]
-                print(scenario_vecs.shape)
-                print(scenario_vecs[:5])
-            else:    
-                scenario_vecs = np.random.rand(case_number, 9+3+2)
-                # scenario_vecs = np.array(
-                #     [[0.05352148, 0.56643706, 0.85212685, 0.92456929, 0.50729455,
-                #         0.13446351, 0.74570565, 0.84009522, 0.87444851, 0.97638516,
-                #         0.1096712 , 0.64214943, 0.45261398, 0.1396596 ],
-                #     [0.25351448, 0.08812581, 0.85883995, 0.81341905, 0.52526959,
-                #         0.81160189, 0.57620638, 0.27738965, 0.80282776, 0.18605579,
-                #         0.56855077, 0.65772086, 0.13858748, 0.50868337],
-                #     [0.56957398, 0.9569505 , 0.8389506 , 0.32457515, 0.15553746,
-                #         0.78511084, 0.37971402, 0.57111563, 0.44561479, 0.88959136,
-                #         0.77315261, 0.41829759, 0.14663282, 0.50875594]]
-                # )
+    #         case_number = 3000
+    #         scenario_vecs = None
+    #         if surrogate_scenario:
+    #             # scenario_vecs = np.genfromtxt(surrogate_scenario+'scenario.csv', delimiter=',')[-10:]
+    #             # scenario_vecs = np.genfromtxt(surrogate_scenario+'scenario.csv', delimiter=',')[[-1]*10]
+    #             print(scenario_vecs.shape)
+    #             print(scenario_vecs[:5])
+    #         else:    
+    #             scenario_vecs = np.random.rand(case_number, 9+3+2)
+    #             # scenario_vecs = np.array(
+    #             #     [[0.05352148, 0.56643706, 0.85212685, 0.92456929, 0.50729455,
+    #             #         0.13446351, 0.74570565, 0.84009522, 0.87444851, 0.97638516,
+    #             #         0.1096712 , 0.64214943, 0.45261398, 0.1396596 ],
+    #             #     [0.25351448, 0.08812581, 0.85883995, 0.81341905, 0.52526959,
+    #             #         0.81160189, 0.57620638, 0.27738965, 0.80282776, 0.18605579,
+    #             #         0.56855077, 0.65772086, 0.13858748, 0.50868337],
+    #             #     [0.56957398, 0.9569505 , 0.8389506 , 0.32457515, 0.15553746,
+    #             #         0.78511084, 0.37971402, 0.57111563, 0.44561479, 0.88959136,
+    #             #         0.77315261, 0.41829759, 0.14663282, 0.50875594]]
+    #             # )
 
                 
-                scenario_vecs = np.array(
-                    [[0.59777615, 0.72223506, 0.12374883, 0.30677363, 0.70592351,
-                        0.80276719, 0.79815411, 0.84394874, 0.01639043, 0.74687154,
-                        0.54046098, 0.68564598, 0.21594995, 0.10060122],
-                    [0.39718882, 0.08087786, 0.37792418, 0.07962608, 0.98978885,
-                        0.85734188, 0.9852377 , 0.87401614, 0.68767837, 0.52781966,
-                        0.49976442, 0.681722  , 0.34517205, 0.95409391],
-                    [0.34050009, 0.7266114 , 0.65643148, 0.52285901, 0.90019775,
-                        0.77005633, 0.98038164, 0.8759482 , 0.40710583, 0.45522409,
-                        0.81124623, 0.92224074, 0.19620584, 0.84855626],
-                    [0.91695837, 0.72107255, 0.3723671 , 0.28326   , 0.76679765,
-                        0.00376423, 0.96084713, 0.86335041, 0.76311738, 0.72054708,
-                        0.51065933, 0.69450803, 0.21293915, 0.76181747],
-                    [0.35233707, 0.75028226, 0.10965908, 0.87967191, 0.70753986,
-                        0.84855801, 0.98681216, 0.88160435, 0.39627272, 0.76438451,
-                        0.69382362, 0.7107312 , 0.238529  , 0.97225962]]
-                )
-                print(scenario_vecs)
+    #             scenario_vecs = np.array(
+    #                 [[0.59777615, 0.72223506, 0.12374883, 0.30677363, 0.70592351,
+    #                     0.80276719, 0.79815411, 0.84394874, 0.01639043, 0.74687154,
+    #                     0.54046098, 0.68564598, 0.21594995, 0.10060122],
+    #                 [0.39718882, 0.08087786, 0.37792418, 0.07962608, 0.98978885,
+    #                     0.85734188, 0.9852377 , 0.87401614, 0.68767837, 0.52781966,
+    #                     0.49976442, 0.681722  , 0.34517205, 0.95409391],
+    #                 [0.34050009, 0.7266114 , 0.65643148, 0.52285901, 0.90019775,
+    #                     0.77005633, 0.98038164, 0.8759482 , 0.40710583, 0.45522409,
+    #                     0.81124623, 0.92224074, 0.19620584, 0.84855626],
+    #                 [0.91695837, 0.72107255, 0.3723671 , 0.28326   , 0.76679765,
+    #                     0.00376423, 0.96084713, 0.86335041, 0.76311738, 0.72054708,
+    #                     0.51065933, 0.69450803, 0.21293915, 0.76181747],
+    #                 [0.35233707, 0.75028226, 0.10965908, 0.87967191, 0.70753986,
+    #                     0.84855801, 0.98681216, 0.88160435, 0.39627272, 0.76438451,
+    #                     0.69382362, 0.7107312 , 0.238529  , 0.97225962]]
+    #             )
+    #             print(scenario_vecs)
 
-            for scenario_vec in scenario_vecs:
-                leaderboard_evaluator.run_one_case(scenario_vec, config)
+    #         for scenario_vec in scenario_vecs:
+    #             leaderboard_evaluator.run_one_case(scenario_vec, config)
             
-        else:
-            print("NSGAII")
-            # pop_size = 50
-            # n_offsprings = 10
-            # generations = 35
+    #     else:
+    #         print("NSGAII")
+    #         # pop_size = 50
+    #         # n_offsprings = 10
+    #         # generations = 35
 
-            pop_size = 50
-            n_offsprings = 10
-            generations = 76
+    #         pop_size = 50
+    #         n_offsprings = 10
+    #         generations = 76
 
-            # pop_size = 2
-            # n_offsprings = 1
-            # generations = 1
+    #         # pop_size = 2
+    #         # n_offsprings = 1
+    #         # generations = 1
 
-            arguments.log=False
+    #         arguments.log=False
 
-            route_indexer = RouteIndexer(arguments.routes, arguments.scenarios, arguments.repetitions)
-            config = None
-            while route_indexer.peek():
-                config = route_indexer.next()
+    #         route_indexer = RouteIndexer(arguments.routes, arguments.scenarios, arguments.repetitions)
+    #         config = None
+    #         while route_indexer.peek():
+    #             config = route_indexer.next()
 
-            mkdir('./data/'+arguments.fitness_path.split('/')[1])
+    #         mkdir('./data/'+arguments.fitness_path.split('/')[1])
 
-            if save_surrogate_log:
-                output_file = './data/'+arguments.fitness_path.split('/')[1]+'/console.log'
-                sys.stdout = open(output_file, 'w')
+    #         if save_surrogate_log:
+    #             output_file = './data/'+arguments.fitness_path.split('/')[1]+'/console.log'
+    #             sys.stdout = open(output_file, 'w')
 
-            problem = None
-            if surrogate:
-                print('surrogate')
-                problem = SurrogateProblem(config, surrogate_path='./data/'+arguments.fitness_path.split('/')[1]+'/')
-            else:
-                leaderboard_evaluator = TestCase(arguments, statistics_manager)
-                config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
-                problem = CustomizedProblem(arguments.fitness_path,
-                                            arguments.fitness_path.replace('fitness.csv','criterion.csv'),
-                                            leaderboard_evaluator.run_one_case,
-                                            config)
-            algorithm = NSGA2(
-                pop_size=pop_size,
-                n_offsprings=n_offsprings,
-                sampling=FloatRandomSampling(),
-                crossover=SBX(prob=0.9, eta=15),
-                mutation=PM(eta=20),
-                eliminate_duplicates=True
-            )
-            termination = get_termination("n_gen", generations)
+    #         problem = None
+    #         if surrogate:
+    #             print('surrogate')
+    #             problem = SurrogateProblem(config, surrogate_path='./data/'+arguments.fitness_path.split('/')[1]+'/')
+    #         else:
+    #             leaderboard_evaluator = TestCase(arguments, statistics_manager)
+    #             config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
+    #             problem = CustomizedProblem(arguments.fitness_path,
+    #                                         arguments.fitness_path.replace('fitness.csv','criterion.csv'),
+    #                                         leaderboard_evaluator.run_one_case,
+    #                                         config)
+    #         algorithm = NSGA2(
+    #             pop_size=pop_size,
+    #             n_offsprings=n_offsprings,
+    #             sampling=FloatRandomSampling(),
+    #             crossover=SBX(prob=0.9, eta=15),
+    #             mutation=PM(eta=20),
+    #             eliminate_duplicates=True
+    #         )
+    #         termination = get_termination("n_gen", generations)
 
-            res = minimize(problem,
-               algorithm,
-               termination,
-               seed=1,
-               save_history=False,
-               verbose=True)
+    #         res = minimize(problem,
+    #            algorithm,
+    #            termination,
+    #            seed=1,
+    #            save_history=False,
+    #            verbose=True)
 
-            X = res.X
-            F = res.F
+    #         X = res.X
+    #         F = res.F
             
-            print(X)
-            print(F)
+    #         print(X)
+    #         print(F)
 
-            np.savez('./data/'+arguments.fitness_path.split('/')[1]+'/output.npz', X, F)
+    #         np.savez('./data/'+arguments.fitness_path.split('/')[1]+'/output.npz', X, F)
 
 
-            if save_surrogate_log:
-                sys.stdout.close()
-                sys.stdout = sys.__stdout__
+    #         if save_surrogate_log:
+    #             sys.stdout.close()
+    #             sys.stdout = sys.__stdout__
 
-    except Exception as e:
-        traceback.print_exc()
-    finally:
-        if not surrogate:
-            del leaderboard_evaluator
+    # except Exception as e:
+    #     traceback.print_exc()
+    # finally:
+    #     if not surrogate:
+    #         del leaderboard_evaluator
 
 
 if __name__ == '__main__':

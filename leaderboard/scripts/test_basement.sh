@@ -23,10 +23,10 @@ export DATA_COLLECTION=True
 
 # export SAVE_IMG=False
 export SAVE_IMG=True
-export GA=True
+export LOG=True
 
-
-
+export GA=False
+export SURROGATE=False
 
 
 
