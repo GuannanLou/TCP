@@ -1524,6 +1524,8 @@ class InRouteTest(Criterion):
         # Get distance from destination
         self._fitness_scores = [1000,1000,1000,1000,1000]
 
+        self._acc = []
+        self._v = []
         if self._debug == 1:
             self._last_fitness_score = [0,0,0,0,0]
 
@@ -1620,6 +1622,11 @@ class InRouteTest(Criterion):
         current_fitness_score[3] = self.get_min_distance_from_static_mesh(self._actor,self._world)
         current_fitness_score[4] = self.destney_completeness(self._actor,self._world)
 
+        acc = self.get_fast_accl(self._actor)
+        self._acc.append(acc)
+        self._v.append(self.get_velo(self._actor))
+        # print(acc)
+
         if self._debug==1:
             self._last_fitness_score = current_fitness_score.copy()
 
@@ -1689,7 +1696,6 @@ class InRouteTest(Criterion):
             print("Minimum Distance from other Vehicle: " + color[0] + str(shortest_distance) + color[1])
         return shortest_distance # substracting distances from center of vehicle
 
-
     def get_min_distance_from_pedestrians(self, ego_vehicle, world):
         distances = [1000]
         ego_vehicle_location = ego_vehicle.get_location()
@@ -1708,7 +1714,6 @@ class InRouteTest(Criterion):
                 color = ['⬇️  \033[91m','\033[0m']
             print("Minimum Distance from Pedestrians: " + color[0] + str(shortest_distance) + color[1])
         return shortest_distance  # substracting distances from center of vehicle
-
 
     def get_min_distance_from_static_mesh(self, ego_vehicle, world):
         distances = [1000]
@@ -1734,7 +1739,6 @@ class InRouteTest(Criterion):
             print("Minimum Distance from static Mesh: " + color[0] + str(shortest_distance) + color[1])
         return (shortest_distance)  # substracting distances from center of vehicle
 
-
     def destney_completeness(self, ego_vehicle, world):
         ego_vehicle_location = ego_vehicle.get_location()
 
@@ -1754,6 +1758,27 @@ class InRouteTest(Criterion):
             print("Destney Completeness: " + color[0] + str(shortest_distance) + color[1])
         return 1 - shortest_distance
     
+    def get_fast_accl(self, ego_vehicle):
+        acc_vector = ego_vehicle.get_acceleration()
+        vel_vector = ego_vehicle.get_velocity()
+
+        acc = (acc_vector.x**2 + acc_vector.y**2)**0.5 * self.angle_between_vectors([acc_vector.x, acc_vector.y], [vel_vector.x, vel_vector.y])
+        return acc
+    
+    def get_velo(self, ego_vehicle):
+        vector = ego_vehicle.get_velocity()
+        velo = (vector.x**2 + vector.y**2)**0.5
+        return velo
+    
+    def angle_between_vectors(self, vector1, vector2):
+        angle_rad = np.arccos(np.dot(vector1, vector2) / (np.linalg.norm(vector1) * np.linalg.norm(vector2) + 1e-10))
+        angle_deg = np.degrees(angle_rad)
+
+        if 90 <= angle_deg <= 270:
+            return -1
+        else:
+            return 1
+
 
 class RouteCompletionTest(Criterion):
 

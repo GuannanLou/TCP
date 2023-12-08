@@ -14,7 +14,8 @@ from __future__ import print_function
 
 import time
 from tabulate import tabulate
-
+import numpy as np
+import matplotlib.pyplot as plt
 
 class ResultOutputProvider(object):
 
@@ -67,8 +68,17 @@ class ResultOutputProvider(object):
                 logline = logline[:-1]+'\n'
                 
                 fitness_file = open(self._data.fitness_path, 'a')
+                print(self._data.fitness_path)
                 fitness_file.write(logline)
                 fitness_file.close()
+
+                plt.plot(np.arange(len(criterion._acc)), criterion._acc, label='Acceleration')
+                plt.plot(np.arange(len(criterion._v)), criterion._v, label='Velocity')
+                plt.legend()
+                plt.savefig(self._data.fitness_path[:-11]+'acc-v.png')
+                
+                np.save(self._data.fitness_path[:-11], criterion._acc)
+                np.save(self._data.fitness_path[:-11], criterion._v)
 
                 return tabulate(list_statistics, tablefmt='fancy_grid')+'\n'
         
