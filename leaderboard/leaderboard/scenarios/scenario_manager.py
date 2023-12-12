@@ -179,7 +179,7 @@ class ScenarioManager(object):
 
             spectator = CarlaDataProvider.get_world().get_spectator()
             ego_trans = self.ego_vehicles[0].get_transform()
-            spectator.set_transform(carla.Transform(ego_trans.location + carla.Location(z=50),
+            spectator.set_transform(carla.Transform(ego_trans.location + carla.Location(z=200),
                                                         carla.Rotation(pitch=-90)))
             #Change the view of simu
             # spectator.set_transform(carla.Transform(ego_trans.location + carla.Location(z=5),

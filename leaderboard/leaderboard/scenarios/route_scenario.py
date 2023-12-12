@@ -331,8 +331,8 @@ class RouteScenario(BasicScenario):
 
 		spectator = CarlaDataProvider.get_world().get_spectator()
 		ego_trans = ego_vehicle.get_transform()
-		spectator.set_transform(carla.Transform(ego_trans.location + carla.Location(z=50),
-													carla.Rotation(pitch=-90)))
+		# spectator.set_transform(carla.Transform(ego_trans.location + carla.Location(z=50),
+		# 											carla.Rotation(pitch=-90)))
 		#Change the view of simu, scenario_manager.py
 		# spectator.set_transform(carla.Transform(ego_trans.location + carla.Location(z=5),
 		# 											carla.Rotation(pitch=-20,yaw=90)))
@@ -593,9 +593,9 @@ class RouteScenario(BasicScenario):
 			other_vehicle = CarlaDataProvider.request_new_actor('vehicle.*',elevate_transform,autopilot=True,random_location=False,rolename='background')
 			self.other_actors.append(other_vehicle)
 			
-		elif self.agent_mod == 0:
+		elif self.agent_mod == 0: ##normal testing
 			for transform in self.other_actors_transforms:
-				transform.location.z = 0.3
+				transform.location.z = 0.1 # Vehicle z 0.3
 
 			# amount = town_amount[config.town] if config.town in town_amount else 0
 			new_actors = CarlaDataProvider.request_new_batch_actors('vehicle.audi.*',
