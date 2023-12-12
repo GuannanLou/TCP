@@ -845,8 +845,8 @@ class TestCase(object):
         config.ego_vehicle_vec = scenario_vec[9+3:9+3+2] #update should be later, as we donot have map in it
         
         config.other_vehicle_vec = [1,0,0]
-        config.ego_vehicle_vec = [1,0]
-        config.weather_vec  = [0,0,0,0,0,0,0,0,0]
+        # config.ego_vehicle_vec = [1,0]
+        # config.weather_vec  = [0,0,0,0,0,0,0,0,0]
         print(config.weather_vec+config.other_vehicle_vec+config.ego_vehicle_vec)
 
         config.vehicle_infront, config.vehicle_opposite, config.vehicle_side = other_vehicle_parser(config.other_vehicle_vec)

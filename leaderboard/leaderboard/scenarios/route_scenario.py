@@ -206,6 +206,9 @@ class RouteScenario(BasicScenario):
 		self._update_route(world, config, debug_mode>0)
 
 		self.ego_vehicle = self._update_ego_vehicle()
+		
+		self.timeout = 60
+		print('timeout', self.timeout)
 
 		self.list_scenarios = self._build_scenario_instances(world,
 															 self.ego_vehicle,
