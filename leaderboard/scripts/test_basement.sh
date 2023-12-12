@@ -22,6 +22,7 @@ export AGENT_MODE=0
 export DATA_COLLECTION=True
 
 export TIMEOUT=60
+# export TIMEOUT=10
 export MAX_SPEED=15
 # export SAVE_IMG=False
 export SAVE_IMG=True

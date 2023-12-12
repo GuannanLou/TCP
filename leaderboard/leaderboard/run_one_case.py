@@ -301,31 +301,145 @@ class TestCase(object):
         self.statistics_manager.save_entry_status(entry_status, False, checkpoint)
 
     def _fill_lane(self, lane_waypoint, region=7):
-        new_vehicles = []
+        new_vehicles = [lane_waypoint]
+
+        # next_waypoint = lane_waypoint
+        # count = 0
+        # new_vehicles += lane_waypoint.next_until_lane_end(region)
 
         next_waypoint = lane_waypoint
-        count = 0
-        while next_waypoint and count < 20:
-            # print(next_waypoint)
-            next_waypoint = next_waypoint.next(region)[-1]
+        while not next_waypoint.is_junction:
+            next_waypoint = next_waypoint.next(region)[0]
             new_vehicles.append(next_waypoint)
-            count += 1
+        new_vehicles = new_vehicles[:-1]
+        # new_vehicles += lane_waypoint.previous_until_lane_start(region)
 
-        next_waypoint = lane_waypoint
-        count = 0
-        while next_waypoint and count < 20:
-            next_waypoint = next_waypoint.previous(region)[-1]
-            new_vehicles.append(next_waypoint)
-            count += 1
+        previous_waypoint = lane_waypoint
+        while not previous_waypoint.is_junction:
+            previous_waypoint = previous_waypoint.previous(region)[0]
+            new_vehicles.append(previous_waypoint)
+        new_vehicles = new_vehicles[:-1]
+        
+        # while next_waypoint and count < 20:
+        #     next_waypoint = next_waypoint.next(region)[-1]
+        #     new_vehicles.append(next_waypoint)
+        #     count += 1
+
+        # next_waypoint = lane_waypoint
+        # count = 0
+        # while next_waypoint and count < 20:
+        #     next_waypoint = next_waypoint.previous(region)[-1]
+        #     new_vehicles.append(next_waypoint)
+        #     count += 1
         
         return new_vehicles
 
     def _fill_road(self, road_waypoint, region=7):
+        # waypoint = road_waypoint
+        # print()
+        # print(waypoint.lane_id, waypoint.road_id, waypoint.lane_change, waypoint.lane_type, waypoint.left_lane_marking.type, waypoint.right_lane_marking.type)
+        # waypoint = road_waypoint.get_left_lane()
+        # print(waypoint.lane_id, waypoint.road_id, waypoint.lane_change, waypoint.lane_type, waypoint.left_lane_marking.type, waypoint.right_lane_marking.type)
+        # waypoint = road_waypoint.get_right_lane()
+        # print(waypoint.lane_id, waypoint.road_id, waypoint.lane_change, waypoint.lane_type, waypoint.left_lane_marking.type, waypoint.right_lane_marking.type)
+        # print()
+
+        waypoints = []
+        lanes = [road_waypoint.lane_id]
+        road_id = road_waypoint.road_id
+        lane_stack = [road_waypoint]
+        while lane_stack:
+            waypoint = lane_stack.pop()
+            # print(waypoint.lane_id, waypoint.road_id, waypoint.lane_type, waypoint)
+            if str(waypoint.lane_type) == 'Driving':
+                waypoints.append(waypoint)
+            next_waypoints = [waypoint.get_left_lane(), waypoint.get_right_lane()]
+            for next_waypoint in next_waypoints:
+                if next_waypoint:
+                    if next_waypoint.road_id == road_id:
+                        if next_waypoint.lane_id not in lanes:
+                            lanes.append(next_waypoint.lane_id)
+                            lane_stack.append(next_waypoint)
+            # print(lanes)
+            # print([w.lane_id for w in waypoints])
+            # print([w.lane_id for w in lane_stack])
+            # print()
+
         new_vehicles = []
-        new_vehicles += self._fill_lane(road_waypoint, region)
-        new_vehicles += self._fill_lane(road_waypoint.get_right_lane(), region)
-        new_vehicles += self._fill_lane(road_waypoint.get_left_lane().get_right_lane(), region)
-        new_vehicles += self._fill_lane(road_waypoint.get_left_lane().get_right_lane().get_right_lane(), region)
+        for waypoint in waypoints:
+            new_vehicles += self._fill_lane(waypoint, region)
+
+        return new_vehicles
+
+    def _get_road_by_junction(self, junction, filted_road):
+        roads = [filted_road]
+        road_waypoints = []
+
+        lane_in_junc =  junction.get_waypoints(carla.LaneType.Driving)
+        for waypoint,_ in lane_in_junc:
+            # junc_road_id = waypoint.road_id
+            next_waypoint = waypoint
+            while next_waypoint.is_junction:
+                next_waypoint = next_waypoint.next(1)[0]
+            if next_waypoint.road_id not in roads:
+                roads.append(next_waypoint.road_id)
+                road_waypoints.append(next_waypoint)
+
+            previous_waypoint = waypoint
+            while previous_waypoint.is_junction:
+                previous_waypoint = previous_waypoint.previous(1)[0]
+            if previous_waypoint.road_id not in roads:
+                roads.append(previous_waypoint.road_id)
+                road_waypoints.append(previous_waypoint)
+
+        for waypoint in road_waypoints:
+            print(waypoint.lane_id, waypoint.road_id, waypoint.lane_change, waypoint.lane_type, waypoint.is_junction, str(waypoint.transform.location))
+
+        return road_waypoints
+
+    def _fill_junction(self, road_waypoint, region=7):
+        roads = []
+        road_waypoints = [road_waypoint]
+
+        print(road_waypoint.lane_id, road_waypoint.road_id, road_waypoint.lane_change, road_waypoint.lane_type, road_waypoint.is_junction)
+
+        end_junc_waypoint = road_waypoint
+        while not end_junc_waypoint.is_junction:
+            end_junc_waypoint = end_junc_waypoint.next(1)[0]
+        print(end_junc_waypoint.lane_id, end_junc_waypoint.road_id, end_junc_waypoint.lane_change, end_junc_waypoint.lane_type, end_junc_waypoint.is_junction)
+
+        road_waypoints += self._get_road_by_junction(end_junc_waypoint.get_junction(), road_waypoint.road_id)
+
+        # for waypoint,waypoint1 in end_junc_waypoint.get_junction().get_waypoints(carla.LaneType.Driving):
+        #     print(waypoint.lane_id, waypoint.road_id, waypoint.lane_change, waypoint.lane_type, waypoint.is_junction, str(waypoint.transform.location))
+        #     print(waypoint1.lane_id, waypoint1.road_id, waypoint1.lane_change, waypoint1.lane_type, waypoint1.is_junction, str(waypoint1.transform.location))
+        #     print()
+
+        # start_junc_waypoint = road_waypoint.previous_until_lane_start(1)[-1].previous(1)[0]
+        start_junc_waypoint = road_waypoint
+        while not start_junc_waypoint.is_junction:
+            start_junc_waypoint = start_junc_waypoint.previous(1)[0]
+        print(start_junc_waypoint.lane_id, start_junc_waypoint.road_id, start_junc_waypoint.lane_change, start_junc_waypoint.lane_type, start_junc_waypoint.is_junction)
+        
+        road_waypoints += self._get_road_by_junction(start_junc_waypoint.get_junction(), road_waypoint.road_id)
+
+
+
+
+
+        # print()
+        # print(str(road_waypoint.transform.location))
+        # print(str(end_junc_waypoint.transform.location))
+        # print([str(waypoint.transform.location) for waypoint in road_waypoint.next_until_lane_end(1)])
+
+        # print()
+        # print(str(road_waypoint.transform.location))
+        # print(str(start_junc_waypoint.transform.location))
+        # print([str(waypoint.transform.location) for waypoint in road_waypoint.previous_until_lane_start(1)])
+
+        new_vehicles = []
+        for road_waypoint in road_waypoints:
+            new_vehicles += self._fill_road(road_waypoint, region)
         return new_vehicles
 
     def _load_and_run_scenario(self, args, config):
@@ -605,7 +719,7 @@ class TestCase(object):
                 #         if self.args.log:
                 #             print("!!!!! Add vehicle in opposite lane failed")
                 
-                waypoint_other_vehicle = self._fill_road(current_waypoint, region)
+                waypoint_other_vehicle = self._fill_junction(current_waypoint, region)
                 numb_other_vehicle = len(waypoint_other_vehicle)
 
                 scenario = RouteScenario(world=self.world, 
