@@ -228,6 +228,7 @@ class InterfuserAgent(autonomous_agent.AutonomousAgent):
 
             self.save_path = pathlib.Path(SAVE_PATH) / string
             self.save_path.mkdir(parents=True, exist_ok=False)
+            os.environ['TEST_CASE_PATH'] = str(self.save_path)
             (self.save_path / "meta").mkdir(parents=True, exist_ok=False)
 
     def _init(self):

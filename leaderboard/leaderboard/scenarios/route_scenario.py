@@ -207,7 +207,7 @@ class RouteScenario(BasicScenario):
 
 		self.ego_vehicle = self._update_ego_vehicle()
 		
-		self.timeout = 60
+		self.timeout = self.config.timeout
 		print('timeout', self.timeout)
 
 		self.list_scenarios = self._build_scenario_instances(world,
@@ -490,7 +490,7 @@ class RouteScenario(BasicScenario):
 			for scenario in scenario_definitions:
 				loc = carla.Location(scenario['trigger_position']['x'],
 									 scenario['trigger_position']['y'],
-									 scenario['trigger_position']['z']) + carla.Location(z=2.0)
+									 scenario['trigger_position']['z']) + carla.Location(z=5)
 				world.debug.draw_point(loc, size=0.3, color=carla.Color(255, 0, 0), life_time=100000)
 				world.debug.draw_string(loc, str(scenario['name']), draw_shadow=False,
 										color=carla.Color(0, 0, 255), life_time=100000, persistent_lines=True)

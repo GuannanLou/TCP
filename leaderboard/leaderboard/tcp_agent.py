@@ -76,6 +76,7 @@ class TCPAgent(autonomous_agent.AutonomousAgent):
 
 				self.save_path = pathlib.Path(os.environ['SAVE_PATH']) / string
 				self.save_path.mkdir(parents=True, exist_ok=False)
+				os.environ['TEST_CASE_PATH'] = str(self.save_path)
 				
 				(self.save_path / 'rgb').mkdir()
 				(self.save_path / 'meta').mkdir()

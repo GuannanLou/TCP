@@ -21,6 +21,8 @@ export AGENT_MODE=0
 
 export DATA_COLLECTION=True
 
+export TIMEOUT=60
+export MAX_SPEED=15
 # export SAVE_IMG=False
 export SAVE_IMG=True
 export LOG=True
@@ -99,6 +101,7 @@ python3 ${LEADERBOARD_ROOT}/leaderboard/run_one_case.py \
 --port=${PORT} \
 --fitness_path=${SAVE_PATH}/fitness.csv \
 --agent_mode=${AGENT_MODE} \
---trafficManagerPort=${TM_PORT}
+--trafficManagerPort=${TM_PORT} \
+--timeout=${TIMEOUT}
 
 

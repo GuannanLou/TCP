@@ -309,6 +309,7 @@ class TestCase(object):
         """
         crash_message = ""
         entry_status = "Started"
+        config.timeout = args.timeout
         if self.args.log:
             print("\n\033[1m========= Preparing {} (repetition {}) =========".format(config.name, config.repetition_index))
             print("> Setting up the agent\033[0m")
@@ -847,7 +848,7 @@ class TestCase(object):
         config.other_vehicle_vec = [1,0,0]
         # config.ego_vehicle_vec = [1,0]
         # config.weather_vec  = [0,0,0,0,0,0,0,0,0]
-        print(config.weather_vec+config.other_vehicle_vec+config.ego_vehicle_vec)
+        # print(config.weather_vec+config.other_vehicle_vec+config.ego_vehicle_vec)
 
         config.vehicle_infront, config.vehicle_opposite, config.vehicle_side = other_vehicle_parser(config.other_vehicle_vec)
         config.weather = weather_parser(config.weather_vec)
@@ -894,7 +895,7 @@ def main():
     parser.add_argument('--debug', type=int, help='Run with debug output', default=0)
     parser.add_argument('--record', type=str, default='',
                         help='Use CARLA recording feature to create a recording of the scenario')
-    parser.add_argument('--timeout', default="60.0",
+    parser.add_argument('--timeout', default=60.0, type=int,
                         help='Set the CARLA client timeout value in seconds')
     parser.add_argument('--log', default="1",
                         help='Whether print log to console')

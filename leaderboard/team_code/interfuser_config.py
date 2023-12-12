@@ -20,7 +20,9 @@ class GlobalConfig:
     brake_ratio = 1.1  # ratio of speed to desired speed at which brake is triggered
     clip_delta = 0.35  # maximum change in speed input to logitudinal controller
 
-    max_speed = 5
+    # max_speed = 5
+    # max_speed = 15
+    max_speed = int(os.environ.get('MAX_SPEED', 15))
     # max_speed = 50
     collision_buffer = [2.5, 1.2]
     model_path = "leaderboard/team_code/interfuser.pth.tar"
