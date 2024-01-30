@@ -31,6 +31,8 @@ import joblib
 import dill
 import pathlib
 import numpy as np
+import random
+random.seed(3.1415926)
 
 
 from srunner.scenariomanager.carla_data_provider import *
@@ -300,8 +302,12 @@ class TestCase(object):
         self.statistics_manager.save_record(current_stats_record, config.index, checkpoint)
         self.statistics_manager.save_entry_status(entry_status, False, checkpoint)
 
-    def _fill_lane(self, lane_waypoint, region=7):
-        new_vehicles = [lane_waypoint]
+    def _fill_lane(self, lane_waypoint, region=7, padding = 4):
+                
+        # new_vehicles = [lane_waypoint]
+        new_vehicles = []
+
+        max_move = int((region-padding)/2)
 
         # next_waypoint = lane_waypoint
         # count = 0
@@ -309,6 +315,7 @@ class TestCase(object):
 
         next_waypoint = lane_waypoint
         while not next_waypoint.is_junction:
+            # next_waypoint = next_waypoint.next(random.randint(padding, 2*region-padding))[0]
             next_waypoint = next_waypoint.next(region)[0]
             new_vehicles.append(next_waypoint)
         new_vehicles = new_vehicles[:-1]
@@ -316,6 +323,7 @@ class TestCase(object):
 
         previous_waypoint = lane_waypoint
         while not previous_waypoint.is_junction:
+            # previous_waypoint = previous_waypoint.previous(random.randint(padding, 2*region-padding))[0]
             previous_waypoint = previous_waypoint.previous(region)[0]
             new_vehicles.append(previous_waypoint)
         new_vehicles = new_vehicles[:-1]
@@ -331,8 +339,18 @@ class TestCase(object):
         #     next_waypoint = next_waypoint.previous(region)[-1]
         #     new_vehicles.append(next_waypoint)
         #     count += 1
-        
+        new_vehicles = [self._random_move_waypoint(waypoint, max_move) for waypoint in new_vehicles] + [lane_waypoint]
+
         return new_vehicles
+    
+    def _random_move_waypoint(self, waypoint, max_move):
+        move = random.randint(-max_move, max_move)
+        if move == 0:
+            return waypoint
+        elif move<0:
+            return waypoint.previous(-move)[0]
+        else:
+            return waypoint.next(move)[0]
 
     def _fill_road(self, road_waypoint, region=7):
         # waypoint = road_waypoint
@@ -401,12 +419,12 @@ class TestCase(object):
         roads = []
         road_waypoints = [road_waypoint]
 
-        print(road_waypoint.lane_id, road_waypoint.road_id, road_waypoint.lane_change, road_waypoint.lane_type, road_waypoint.is_junction)
+        # print(road_waypoint.lane_id, road_waypoint.road_id, road_waypoint.lane_change, road_waypoint.lane_type, road_waypoint.is_junction)
 
         end_junc_waypoint = road_waypoint
         while not end_junc_waypoint.is_junction:
             end_junc_waypoint = end_junc_waypoint.next(1)[0]
-        print(end_junc_waypoint.lane_id, end_junc_waypoint.road_id, end_junc_waypoint.lane_change, end_junc_waypoint.lane_type, end_junc_waypoint.is_junction)
+        # print(end_junc_waypoint.lane_id, end_junc_waypoint.road_id, end_junc_waypoint.lane_change, end_junc_waypoint.lane_type, end_junc_waypoint.is_junction)
 
         road_waypoints += self._get_road_by_junction(end_junc_waypoint.get_junction(), road_waypoint.road_id)
 
@@ -419,13 +437,9 @@ class TestCase(object):
         start_junc_waypoint = road_waypoint
         while not start_junc_waypoint.is_junction:
             start_junc_waypoint = start_junc_waypoint.previous(1)[0]
-        print(start_junc_waypoint.lane_id, start_junc_waypoint.road_id, start_junc_waypoint.lane_change, start_junc_waypoint.lane_type, start_junc_waypoint.is_junction)
+        # print(start_junc_waypoint.lane_id, start_junc_waypoint.road_id, start_junc_waypoint.lane_change, start_junc_waypoint.lane_type, start_junc_waypoint.is_junction)
         
         road_waypoints += self._get_road_by_junction(start_junc_waypoint.get_junction(), road_waypoint.road_id)
-
-
-
-
 
         # print()
         # print(str(road_waypoint.transform.location))
@@ -551,183 +565,93 @@ class TestCase(object):
                 numb_other_vehicle = 0
                 waypoint_other_vehicle = []
 
-                region = 7
+                ## region = 7
                 ## region = 14
+                # region = 20
+                region = args.region
 
-                # if config.vehicle_infront:
-                #     print('##current vehicle:', current_waypoint)
+                if not region > 0:
+                    if config.vehicle_infront:
+                        test_waypoint = current_waypoint.next(7)[-1]
 
-                #     test_waypoint = current_waypoint
-                #     count = 0
-                #     while test_waypoint and count < 20:
-                #         print(test_waypoint)
-                #         test_waypoint = test_waypoint.next(region)[-1]
-                #         numb_other_vehicle += 1
+                        if test_waypoint:
+                            numb_other_vehicle += 1
+                            if self.args.log:
+                                print('----VEHICLE-INFRONT----')
+                            # print('##current vehicle:', current_waypoint)
+                            # print('####other vehicle:', test_waypoint)
 
-                #         if self.args.log:
-                #             print('----VEHICLE-INFRONT----')
-                #         # print('##current vehicle:', current_waypoint)
-                #         # print('####other vehicle:', test_waypoint)
+                            waypoint_other_vehicle.append(test_waypoint)
+                        else:
+                            if self.args.log:
+                                print("!!!!! Add vehicle infront failed")
 
-                #         waypoint_other_vehicle.append(test_waypoint)
-                #         count += 1
-                #     print(count)
+                    if config.vehicle_side:
+                        test_waypoint = current_waypoint.get_right_lane()
 
-                #     test_waypoint = current_waypoint
-                #     count = 0
-                #     while test_waypoint and count < 20:
-                #         test_waypoint = test_waypoint.previous(region)[-1]
-                #         numb_other_vehicle += 1
+                        if test_waypoint:
+                            numb_other_vehicle += 1
+                            if self.args.log:
+                                print('----VEHICLE-SIDE-------')
+                            # print('##current vehicle:', current_waypoint)
+                            # print('####other vehicle:', test_waypoint)
 
-                #         # print('##current vehicle:', current_waypoint)
-                #         # print('####other vehicle:', test_waypoint)
+                            road = self._get_road(test_waypoint)
+                            road_start = road[0]
 
-                #         waypoint_other_vehicle.append(test_waypoint)
-                #         count += 1
-                #     print(count)
+                            waypoint_other_vehicle.append(road_start)
+                            # self._draw_road(self.world, test_waypoint, road, 
+                            #             vertical_shift=1.0, persistency=50000.0)
+                        else:
+                            if self.args.log:
+                                print("!!!!! Add vehicle in side lane failed")
+                        
+                    if config.vehicle_opposite:
+                        test_waypoint = current_waypoint.get_left_lane()
+                        
+                        while True:
+                            # print(test_waypoint.lane_type, type(test_waypoint.lane_type))
+                            # print(test_waypoint.lane_id, current_waypoint.lane_id)
+                            # print(test_waypoint.lane_type, current_waypoint.lane_type)
+                            if not test_waypoint:
+                                break
+                            if test_waypoint.lane_type == carla.LaneType.Bidirectional:
+                                # print(carla.LaneType.Bidirectional)
+                                test_waypoint = test_waypoint.get_right_lane()
+                            if test_waypoint.lane_id > 0 == current_waypoint.lane_id > 0: 
+                                test_waypoint = test_waypoint.get_right_lane()
+                            else:
+                                break
 
+                        if test_waypoint:
+                            numb_other_vehicle += 1
+                            if self.args.log:
+                                print('----VEHICLE-OPPOSITE---')
+                            # print('##current vehicle:', current_waypoint)
+                            # print('####other vehicle:', test_waypoint)
 
-                #     count = 0
-                #     road = self._get_road(current_waypoint.get_right_lane())
-                #     # road_end = road[-1]
-                #     test_waypoint = road[0]
-                    
-                #     while test_waypoint and count < 20:
-                #         test_waypoint = test_waypoint.next(region)[-1]
-                #         numb_other_vehicle += 1
+                            road = self._get_road(test_waypoint)
 
-                #         waypoint_other_vehicle.append(test_waypoint)
-                #         count += 1
-                #     print(count)
+                            road_end = road[-1]
+                            road_start = road[0]
 
-                #     count = 0
-                #     road = self._get_road(current_waypoint.get_right_lane())
-                #     # road_end = road[-1]
-                #     test_waypoint = road[0]
-                    
-                #     while test_waypoint and count < 20:
-                #         test_waypoint = test_waypoint.next(region)[-1]
-                #         numb_other_vehicle += 1
+                            waypoint_other_vehicle.append(road_start)
+                            # self._draw_road(self.world, test_waypoint, road, 
+                            #                 vertical_shift=1.0, persistency=50000.0)
+                        else:
+                            if self.args.log:
+                                print("!!!!! Add vehicle in opposite lane failed")
 
-                #         waypoint_other_vehicle.append(test_waypoint)
-                #         count += 1
-                #     print(count)
-
-                #     count = 0
-                #     road = self._get_road(current_waypoint.get_left_lane().get_right_lane())
-                #     # road_end = road[-1]
-                #     test_waypoint = road[0]
-                    
-                #     while test_waypoint and count < 20:
-                #         test_waypoint = test_waypoint.next(region)[-1]
-                #         numb_other_vehicle += 1
-
-                #         waypoint_other_vehicle.append(test_waypoint)
-                #         count += 1
-                #     print(count)
-
-                #     count = 0
-                #     road = self._get_road(current_waypoint.get_left_lane().get_right_lane().get_right_lane())
-                #     # road_end = road[-1]
-                #     test_waypoint = road[0]
-                    
-                #     while test_waypoint and count < 20:
-                #         test_waypoint = test_waypoint.next(region)[-1]
-                #         numb_other_vehicle += 1
-
-                #         waypoint_other_vehicle.append(test_waypoint)
-                #         count += 1
-                #     print(count)
-                #     # test_waypoint = current_waypoint.get_left_lane()
-                #     # count = 0
-                #     # while test_waypoint and count < 20:
-                #     #     test_waypoint = test_waypoint.previous(region)[-1]
-                #     #     numb_other_vehicle += 1
-
-                #     #     # print('##current vehicle:', current_waypoint)
-                #     #     # print('####other vehicle:', test_waypoint)
-
-                #     #     waypoint_other_vehicle.append(test_waypoint)
-                #     #     count += 1
-                #     # print(count)
-
-                #     # if test_waypoint:
-                #     #     numb_other_vehicle += 1
-                #     #     if self.args.log:
-                #     #         print('----VEHICLE-INFRONT----')
-                #     #     # print('##current vehicle:', current_waypoint)
-                #     #     # print('####other vehicle:', test_waypoint)
-
-                #     #     waypoint_other_vehicle.append(test_waypoint)
-                #     # else:
-                #     #     if self.args.log:
-                #     #         print("!!!!! Add vehicle infront failed")
-
-                # if config.vehicle_side:
-                #     test_waypoint = current_waypoint.get_right_lane()
-
-                #     if test_waypoint:
-                #         numb_other_vehicle += 1
-                #         if self.args.log:
-                #             print('----VEHICLE-SIDE-------')
-                #         # print('##current vehicle:', current_waypoint)
-                #         # print('####other vehicle:', test_waypoint)
-
-                #         road = self._get_road(test_waypoint)
-                #         road_start = road[0]
-
-                #         waypoint_other_vehicle.append(road_start)
-                #         # self._draw_road(self.world, test_waypoint, road, 
-                #         #             vertical_shift=1.0, persistency=50000.0)
-                #     else:
-                #         if self.args.log:
-                #             print("!!!!! Add vehicle in side lane failed")
-                    
-                # if config.vehicle_opposite:
-                #     test_waypoint = current_waypoint.get_left_lane()
-                    
-                #     while True:
-                #         # print(test_waypoint.lane_type, type(test_waypoint.lane_type))
-                #         # print(test_waypoint.lane_id, current_waypoint.lane_id)
-                #         # print(test_waypoint.lane_type, current_waypoint.lane_type)
-                #         if not test_waypoint:
-                #             break
-                #         if test_waypoint.lane_type == carla.LaneType.Bidirectional:
-                #             # print(carla.LaneType.Bidirectional)
-                #             test_waypoint = test_waypoint.get_right_lane()
-                #         if test_waypoint.lane_id > 0 == current_waypoint.lane_id > 0: 
-                #             test_waypoint = test_waypoint.get_right_lane()
-                #         else:
-                #             break
-
-                #     if test_waypoint:
-                #         numb_other_vehicle += 1
-                #         if self.args.log:
-                #             print('----VEHICLE-OPPOSITE---')
-                #         # print('##current vehicle:', current_waypoint)
-                #         # print('####other vehicle:', test_waypoint)
-
-                #         road = self._get_road(test_waypoint)
-
-                #         road_end = road[-1]
-                #         road_start = road[0]
-
-                #         waypoint_other_vehicle.append(road_start)
-                #         # self._draw_road(self.world, test_waypoint, road, 
-                #         #                 vertical_shift=1.0, persistency=50000.0)
-                #     else:
-                #         if self.args.log:
-                #             print("!!!!! Add vehicle in opposite lane failed")
-                
-                waypoint_other_vehicle = self._fill_junction(current_waypoint, region)
-                numb_other_vehicle = len(waypoint_other_vehicle)
+                else:
+                    waypoint_other_vehicle = self._fill_junction(current_waypoint, region)
+                    numb_other_vehicle = len(waypoint_other_vehicle)
 
                 scenario = RouteScenario(world=self.world, 
-                                         config=config, 
-                                         debug_mode=args.debug, 
-                                         agent_mode=args.agent_mode, 
-                                         numb_other_vehicle=numb_other_vehicle,
-                                         start_waypoint=waypoint_other_vehicle)# add vehicle in this line
+                                        config=config, 
+                                        debug_mode=args.debug, 
+                                        agent_mode=args.agent_mode, 
+                                        numb_other_vehicle=numb_other_vehicle,
+                                        start_waypoint=waypoint_other_vehicle)# add vehicle in this line
             self.statistics_manager.set_scenario(scenario.scenario)
 
 
@@ -946,7 +870,7 @@ class TestCase(object):
                 config.weather_vec = scenario_vec[0:9]
                 config.other_vehicle_vec = scenario_vec[9:9+3]
                 config.ego_vehicle_vec = scenario_vec[9+3:9+3+2] #update should be later, as we donot have map in it
-                config.other_vehicle_vec = [1,1,1]
+                # config.other_vehicle_vec = [1,1,1]
                 # config.ego_vehicle_vec = [1,0]
                 # config.weather_vec  = [0,0,0,0,0,0,0,0,0]
                 print(config.weather_vec, config.other_vehicle_vec)
@@ -990,9 +914,9 @@ class TestCase(object):
         config.other_vehicle_vec = scenario_vec[9:9+3]
         config.ego_vehicle_vec = scenario_vec[9+3:9+3+2] #update should be later, as we donot have map in it
         
-        config.other_vehicle_vec = [1,0,0]
+        config.other_vehicle_vec = [1,1,1]
         # config.ego_vehicle_vec = [1,0]
-        config.weather_vec  = [0,0,0,0,0,0,0,0,0]
+        # config.weather_vec  = [0,0,0,0,0,0,0,0,0]
         # print(config.weather_vec+config.other_vehicle_vec+config.ego_vehicle_vec)
 
         config.vehicle_infront, config.vehicle_opposite, config.vehicle_side = other_vehicle_parser(config.other_vehicle_vec)
@@ -1023,7 +947,60 @@ def mkdir(path):
     folder = os.path.exists(path)
     if not folder:
         os.makedirs(path)
-    
+
+def log_experiment_configs(json_path):
+    import json
+
+    ## Experiment Controls
+    AGENT_MODE = int(os.environ.get('AGENT_MODE', float('inf')))
+    ADS_MODEL = os.environ['ADS_MODEL']==True
+    GA = os.environ['GA']==True
+    SURROGATE = os.environ['SURROGATE']==True
+    SURROGATE_MODEL = os.environ.get('SURROGATE_MODEL', '')
+    TIMEOUT = int(os.environ.get('TIMEOUT', float('inf')))
+    REGION = int(os.environ.get('REGION', 7))
+              
+    ## Information Collection
+    SAVE_IMG = os.environ['SAVE_IMG']==True
+    LOG = os.environ['LOG']==True
+    SAVE_PATH = os.environ.get('SAVE_PATH', '')
+
+    ## Route File
+    ROUTE_FILE = os.environ.get('ROUTE_FILE', '')
+
+    data = {
+        'AGENT_MODE' : AGENT_MODE,
+        'ADS_MODEL' : ADS_MODEL,
+        'GA' : GA,
+        'SURROGATE' : SURROGATE,
+        'SURROGATE_MODEL' : SURROGATE_MODEL,
+        'TIMEOUT' : TIMEOUT,
+        'REGION' : REGION,
+        'SAVE_IMG' : SAVE_IMG,
+        'LOG' : LOG,
+        'SAVE_PATH' : SAVE_PATH,
+        'ROUTE_FILE' : ROUTE_FILE
+    }
+
+    with open(json_path, 'w') as json_file:
+        json.dump(data, json_file)
+
+    print("Log experiment configs")
+
+    # ## Experiment Controls
+    # export AGENT_MODE=0
+    # export ADS_MODEL=False
+    # export GA=False
+    # export SURROGATE=False
+    # export SURROGATE_MODEL=None
+    # # export TIMEOUT=60
+    # export TIMEOUT=120
+    # export REGION=7
+                    
+    # ## Information Collection
+    # export SAVE_IMG=True
+    # export LOG=True
+    # export SAVE_PATH=../SBT-data/${MODEL}/${current_time}--${SAVE_IMG_TEXT}/
 
 def main():
     description = "CARLA AD Leaderboard Evaluation: evaluate your Agent in CARLA scenarios\n"
@@ -1078,157 +1055,17 @@ def main():
     arguments = parser.parse_args()
     print("init statistics_manager")
     
-    arguments.log=True
-    pathlib.Path(os.environ['SAVE_PATH']).mkdir()
-    log = os.environ['LOG']==True
     surrogate = os.environ['SURROGATE']==True
+    arguments.log = os.environ['LOG']==True
+    pathlib.Path(os.environ['SAVE_PATH']).mkdir()
+
+    log_experiment_configs(os.environ['SAVE_PATH']+'experiment_config.json')
 
     statistics_manager = StatisticsManager()
     route_indexer = RouteIndexer(arguments.routes, arguments.scenarios, arguments.repetitions)
     leaderboard_evaluator = TestCase(arguments, statistics_manager) if not surrogate else None
 
     search_based_testing(arguments, leaderboard_evaluator, route_indexer)
-
-    # GA = False
-    # surrogate = False
-    # save_surrogate_log = True
-    # surrogate_scenario = None
-    # # surrogate_scenario = 'surrogate/routes_short_2023-06-13|18:27:28/' 
-
-    # # 'surrogate/routes_short_2023-05-31|15:47:49/scenario.csv'
-    # # surrogate_scenario = 'data/routes_short_2023-06-16|07:52:55/'
-    # try:
-        
-    #     if not GA: 
-    #         print("begin")
-    #         # leaderboard_evaluator.run(arguments)
-    #         arguments.log=True
-    #         leaderboard_evaluator = TestCase(arguments, statistics_manager)
-    #         route_indexer = RouteIndexer(arguments.routes, arguments.scenarios, arguments.repetitions)
-    #         config = None
-    #         while route_indexer.peek():
-    #             config = route_indexer.next()
-            
-    #         config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
-
-    #         case_number = 3000
-    #         scenario_vecs = None
-    #         if surrogate_scenario:
-    #             # scenario_vecs = np.genfromtxt(surrogate_scenario+'scenario.csv', delimiter=',')[-10:]
-    #             # scenario_vecs = np.genfromtxt(surrogate_scenario+'scenario.csv', delimiter=',')[[-1]*10]
-    #             print(scenario_vecs.shape)
-    #             print(scenario_vecs[:5])
-    #         else:    
-    #             scenario_vecs = np.random.rand(case_number, 9+3+2)
-    #             # scenario_vecs = np.array(
-    #             #     [[0.05352148, 0.56643706, 0.85212685, 0.92456929, 0.50729455,
-    #             #         0.13446351, 0.74570565, 0.84009522, 0.87444851, 0.97638516,
-    #             #         0.1096712 , 0.64214943, 0.45261398, 0.1396596 ],
-    #             #     [0.25351448, 0.08812581, 0.85883995, 0.81341905, 0.52526959,
-    #             #         0.81160189, 0.57620638, 0.27738965, 0.80282776, 0.18605579,
-    #             #         0.56855077, 0.65772086, 0.13858748, 0.50868337],
-    #             #     [0.56957398, 0.9569505 , 0.8389506 , 0.32457515, 0.15553746,
-    #             #         0.78511084, 0.37971402, 0.57111563, 0.44561479, 0.88959136,
-    #             #         0.77315261, 0.41829759, 0.14663282, 0.50875594]]
-    #             # )
-
-                
-    #             scenario_vecs = np.array(
-    #                 [[0.59777615, 0.72223506, 0.12374883, 0.30677363, 0.70592351,
-    #                     0.80276719, 0.79815411, 0.84394874, 0.01639043, 0.74687154,
-    #                     0.54046098, 0.68564598, 0.21594995, 0.10060122],
-    #                 [0.39718882, 0.08087786, 0.37792418, 0.07962608, 0.98978885,
-    #                     0.85734188, 0.9852377 , 0.87401614, 0.68767837, 0.52781966,
-    #                     0.49976442, 0.681722  , 0.34517205, 0.95409391],
-    #                 [0.34050009, 0.7266114 , 0.65643148, 0.52285901, 0.90019775,
-    #                     0.77005633, 0.98038164, 0.8759482 , 0.40710583, 0.45522409,
-    #                     0.81124623, 0.92224074, 0.19620584, 0.84855626],
-    #                 [0.91695837, 0.72107255, 0.3723671 , 0.28326   , 0.76679765,
-    #                     0.00376423, 0.96084713, 0.86335041, 0.76311738, 0.72054708,
-    #                     0.51065933, 0.69450803, 0.21293915, 0.76181747],
-    #                 [0.35233707, 0.75028226, 0.10965908, 0.87967191, 0.70753986,
-    #                     0.84855801, 0.98681216, 0.88160435, 0.39627272, 0.76438451,
-    #                     0.69382362, 0.7107312 , 0.238529  , 0.97225962]]
-    #             )
-    #             print(scenario_vecs)
-
-    #         for scenario_vec in scenario_vecs:
-    #             leaderboard_evaluator.run_one_case(scenario_vec, config)
-            
-    #     else:
-    #         print("NSGAII")
-    #         # pop_size = 50
-    #         # n_offsprings = 10
-    #         # generations = 35
-
-    #         pop_size = 50
-    #         n_offsprings = 10
-    #         generations = 76
-
-    #         # pop_size = 2
-    #         # n_offsprings = 1
-    #         # generations = 1
-
-    #         arguments.log=False
-
-    #         route_indexer = RouteIndexer(arguments.routes, arguments.scenarios, arguments.repetitions)
-    #         config = None
-    #         while route_indexer.peek():
-    #             config = route_indexer.next()
-
-    #         mkdir('./data/'+arguments.fitness_path.split('/')[1])
-
-    #         if save_surrogate_log:
-    #             output_file = './data/'+arguments.fitness_path.split('/')[1]+'/console.log'
-    #             sys.stdout = open(output_file, 'w')
-
-    #         problem = None
-    #         if surrogate:
-    #             print('surrogate')
-    #             problem = SurrogateProblem(config, surrogate_path='./data/'+arguments.fitness_path.split('/')[1]+'/')
-    #         else:
-    #             leaderboard_evaluator = TestCase(arguments, statistics_manager)
-    #             config.original_trajectory = [config.trajectory[0], config.trajectory[1]]
-    #             problem = CustomizedProblem(arguments.fitness_path,
-    #                                         arguments.fitness_path.replace('fitness.csv','criterion.csv'),
-    #                                         leaderboard_evaluator.run_one_case,
-    #                                         config)
-    #         algorithm = NSGA2(
-    #             pop_size=pop_size,
-    #             n_offsprings=n_offsprings,
-    #             sampling=FloatRandomSampling(),
-    #             crossover=SBX(prob=0.9, eta=15),
-    #             mutation=PM(eta=20),
-    #             eliminate_duplicates=True
-    #         )
-    #         termination = get_termination("n_gen", generations)
-
-    #         res = minimize(problem,
-    #            algorithm,
-    #            termination,
-    #            seed=1,
-    #            save_history=False,
-    #            verbose=True)
-
-    #         X = res.X
-    #         F = res.F
-            
-    #         print(X)
-    #         print(F)
-
-    #         np.savez('./data/'+arguments.fitness_path.split('/')[1]+'/output.npz', X, F)
-
-
-    #         if save_surrogate_log:
-    #             sys.stdout.close()
-    #             sys.stdout = sys.__stdout__
-
-    # except Exception as e:
-    #     traceback.print_exc()
-    # finally:
-    #     if not surrogate:
-    #         del leaderboard_evaluator
-
 
 if __name__ == '__main__':
     main()

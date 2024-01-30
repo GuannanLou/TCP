@@ -11,32 +11,16 @@ export PYTHONPATH=$PYTHONPATH:scenario_runner
 export LEADERBOARD_ROOT=leaderboard
 export CHALLENGE_TRACK_CODENAME=SENSORS
 export PORT=2000
-# export TM_PORT=8000
 export TM_PORT=2500
-export DEBUG_CHALLENGE=0
+export REPETITIONS=1 # multiple evaluation runs, Never changed
+export RESUME=True 
+export DEBUG_CHALLENGE=0  # TODO: Check
 # export DEBUG_CHALLENGE=1
-export REPETITIONS=1 # multiple evaluation runs
-export RESUME=True
-export AGENT_MODE=0
-
-export DATA_COLLECTION=True
-
-export TIMEOUT=60
-# export TIMEOUT=10
-export MAX_SPEED=15
-# export SAVE_IMG=False
-export SAVE_IMG=True
-export LOG=True
-
-export GA=False
-export SURROGATE=False
+export DATA_COLLECTION=True # TODO: Check
+export MAX_SPEED=5
+# export MAX_SPEED=15
 
 
-
-SAVE_IMG_TEXT=$(if [ "$SAVE_IMG" = "True" ]; then echo "SAVE_IMG"; else echo "NONE_IMG"; fi)
-
-export ROUTE_FILE=routes_short
-current_time=$(date "+%Y-%m-%d|%H:%M:%S")
 
 # Roach data collection
 # export ROUTES=leaderboard/data/TCP_training_routes/${ROUTE_FILE}.xml
@@ -46,9 +30,7 @@ current_time=$(date "+%Y-%m-%d|%H:%M:%S")
 # export SCENARIOS=leaderboard/data/scenarios/all_towns_traffic_scenarios.json
 # export SAVE_PATH=data/${ROUTE_FILE}_${current_time}/
 
-
 MODEL=$1
-# MODEL="InterFuser"
 if [ "$MODEL" = "TCP" ]; then
     echo "TCP"
     export TEAM_AGENT=team_code/tcp_agent.py
@@ -62,30 +44,32 @@ else
     exit 1
 fi
 
+# export ROUTE_FILE=routes_short
+export ROUTE_FILE=routes_courve
+current_time=$(date "+%Y-%m-%d|%H:%M:%S")
 export ROUTES=leaderboard/data/TCP_training_routes/${ROUTE_FILE}.xml
 export CHECKPOINT_ENDPOINT=data_collect_${ROUTE_FILE}_${current_time}.json
 export SCENARIOS=leaderboard/data/scenarios/all_towns_traffic_scenarios.json
-# export SAVE_PATH=data/results_TCP/
+
+
+
+## Experiment Controls
+export AGENT_MODE=0
+export ADS_MODEL=False
+export GA=False
+export SURROGATE=False
+export SURROGATE_MODEL=None
+# export TIMEOUT=60
+export TIMEOUT=120
+# export TIMEOUT=5
+export REGION=7
+# min for 5
+
+## Information Collection
+export SAVE_IMG=True
+export LOG=False
+SAVE_IMG_TEXT=$(if [ "$SAVE_IMG" = "True" ]; then echo "SAVE_IMG"; else echo "NONE_IMG"; fi)
 export SAVE_PATH=../SBT-data/${MODEL}/${current_time}--${SAVE_IMG_TEXT}/
-
-
-# export RECORD_PATH=./
-
-# python3 ${LEADERBOARD_ROOT}/leaderboard/leaderboard_evaluator.py \
-# --scenarios=${SCENARIOS}  \
-# --routes=${ROUTES} \
-# --repetitions=${REPETITIONS} \
-# --track=${CHALLENGE_TRACK_CODENAME} \
-# --checkpoint=${CHECKPOINT_ENDPOINT} \
-# --agent=${TEAM_AGENT} \
-# --agent-config=${TEAM_CONFIG} \
-# --debug=${DEBUG_CHALLENGE} \
-# --record=${RECORD_PATH} \
-# --resume=${RESUME} \
-# --port=${PORT} \
-# --fitness_path=${SAVE_PATH}/fitness.csv \
-# --agent_mode=${AGENT_MODE} \
-# --trafficManagerPort=${TM_PORT}
 
 
 python3 ${LEADERBOARD_ROOT}/leaderboard/run_one_case.py \
