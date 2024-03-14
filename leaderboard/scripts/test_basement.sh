@@ -62,7 +62,7 @@ export SURROGATE_MODEL=None
 # export TIMEOUT=60
 export TIMEOUT=120
 # export TIMEOUT=5
-export REGION=7
+export REGION=0
 # min for 5
 
 ## Information Collection
