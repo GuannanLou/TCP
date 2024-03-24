@@ -44,8 +44,20 @@ else
     exit 1
 fi
 
+
+SECTION=$2
+if [ "$SECTION" = "Curve" ]; then
+    echo "routes_courve"
+    export ROUTE_FILE=routes_courve
+elif [ "$SECTION" = "Straight" ]; then
+    echo "routes_short"
+    export ROUTE_FILE=routes_short
+else
+    echo "Please include the road section (Curve, Straight)"
+    exit 1
+fi
 # export ROUTE_FILE=routes_short
-export ROUTE_FILE=routes_courve
+# export ROUTE_FILE=routes_courve
 current_time=$(date "+%Y-%m-%d|%H:%M:%S")
 export ROUTES=leaderboard/data/TCP_training_routes/${ROUTE_FILE}.xml
 export CHECKPOINT_ENDPOINT=data_collect_${ROUTE_FILE}_${current_time}.json
@@ -62,8 +74,33 @@ export SURROGATE_MODEL=None
 # export TIMEOUT=60
 export TIMEOUT=120
 # export TIMEOUT=5
-export REGION=0
-# min for 5
+# export REGION=-1
+# # min for 5
+
+LEVEL=$3
+if [ "$LEVEL" = "0" ]; then
+    echo "Density Level 0"
+    export REGION=0
+elif [ "$LEVEL" = "1" ]; then
+    echo "Density Level 1"
+    export REGION=28
+elif [ "$LEVEL" = "2" ]; then
+    echo "Density Level 2"
+    export REGION=21
+elif [ "$LEVEL" = "3" ]; then
+    echo "Density Level 3"
+    export REGION=14
+elif [ "$LEVEL" = "4" ]; then
+    echo "Density Level 4"
+    export REGION=7
+elif [ "$LEVEL" = "baseline" ]; then
+    echo "Density Level baseline"
+    export REGION=-1
+else
+    echo "Please include the road section (Curve, Straight)"
+    exit 1
+fi
+
 
 ## Information Collection
 export SAVE_IMG=True
@@ -88,5 +125,3 @@ python3 ${LEADERBOARD_ROOT}/leaderboard/run_one_case.py \
 --agent_mode=${AGENT_MODE} \
 --trafficManagerPort=${TM_PORT} \
 --timeout=${TIMEOUT}
-
-

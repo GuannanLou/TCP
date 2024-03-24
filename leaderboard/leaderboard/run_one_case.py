@@ -570,79 +570,85 @@ class TestCase(object):
                 ## region = 20
                 region = args.region
 
-                if not region > 0:
+                if region == 0:
                     pass
+                
+                elif region < 0:
+                    
+                    config.vehicle_infront = True
+                    config.vehicle_side = True
+                    config.vehicle_opposite = True
 
-                    # if config.vehicle_infront:
-                    #     test_waypoint = current_waypoint.next(7)[-1]
+                    if config.vehicle_infront:
+                        test_waypoint = current_waypoint.next(7)[-1]
 
-                    #     if test_waypoint:
-                    #         numb_other_vehicle += 1
-                    #         if self.args.log:
-                    #             print('----VEHICLE-INFRONT----')
-                    #         # print('##current vehicle:', current_waypoint)
-                    #         # print('####other vehicle:', test_waypoint)
+                        if test_waypoint:
+                            numb_other_vehicle += 1
+                            if self.args.log:
+                                print('----VEHICLE-INFRONT----')
+                            # print('##current vehicle:', current_waypoint)
+                            # print('####other vehicle:', test_waypoint)
 
-                    #         waypoint_other_vehicle.append(test_waypoint)
-                    #     else:
-                    #         if self.args.log:
-                    #             print("!!!!! Add vehicle infront failed")
+                            waypoint_other_vehicle.append(test_waypoint)
+                        else:
+                            if self.args.log:
+                                print("!!!!! Add vehicle infront failed")
 
-                    # if config.vehicle_side:
-                    #     test_waypoint = current_waypoint.get_right_lane()
+                    if config.vehicle_side:
+                        test_waypoint = current_waypoint.get_right_lane()
 
-                    #     if test_waypoint:
-                    #         numb_other_vehicle += 1
-                    #         if self.args.log:
-                    #             print('----VEHICLE-SIDE-------')
-                    #         # print('##current vehicle:', current_waypoint)
-                    #         # print('####other vehicle:', test_waypoint)
+                        if test_waypoint:
+                            numb_other_vehicle += 1
+                            if self.args.log:
+                                print('----VEHICLE-SIDE-------')
+                            # print('##current vehicle:', current_waypoint)
+                            # print('####other vehicle:', test_waypoint)
 
-                    #         road = self._get_road(test_waypoint)
-                    #         road_start = road[0]
+                            road = self._get_road(test_waypoint)
+                            road_start = road[0]
 
-                    #         waypoint_other_vehicle.append(road_start)
-                    #         # self._draw_road(self.world, test_waypoint, road, 
-                    #         #             vertical_shift=1.0, persistency=50000.0)
-                    #     else:
-                    #         if self.args.log:
-                    #             print("!!!!! Add vehicle in side lane failed")
+                            waypoint_other_vehicle.append(road_start)
+                            # self._draw_road(self.world, test_waypoint, road, 
+                            #             vertical_shift=1.0, persistency=50000.0)
+                        else:
+                            if self.args.log:
+                                print("!!!!! Add vehicle in side lane failed")
                         
-                    # if config.vehicle_opposite:
-                    #     test_waypoint = current_waypoint.get_left_lane()
+                    if config.vehicle_opposite:
+                        test_waypoint = current_waypoint.get_left_lane()
                         
-                    #     while True:
-                    #         # print(test_waypoint.lane_type, type(test_waypoint.lane_type))
-                    #         # print(test_waypoint.lane_id, current_waypoint.lane_id)
-                    #         # print(test_waypoint.lane_type, current_waypoint.lane_type)
-                    #         if not test_waypoint:
-                    #             break
-                    #         if test_waypoint.lane_type == carla.LaneType.Bidirectional:
-                    #             # print(carla.LaneType.Bidirectional)
-                    #             test_waypoint = test_waypoint.get_right_lane()
-                    #         if test_waypoint.lane_id > 0 == current_waypoint.lane_id > 0: 
-                    #             test_waypoint = test_waypoint.get_right_lane()
-                    #         else:
-                    #             break
+                        while True:
+                            # print(test_waypoint.lane_type, type(test_waypoint.lane_type))
+                            # print(test_waypoint.lane_id, current_waypoint.lane_id)
+                            # print(test_waypoint.lane_type, current_waypoint.lane_type)
+                            if not test_waypoint:
+                                break
+                            if test_waypoint.lane_type == carla.LaneType.Bidirectional:
+                                # print(carla.LaneType.Bidirectional)
+                                test_waypoint = test_waypoint.get_right_lane()
+                            if test_waypoint.lane_id > 0 == current_waypoint.lane_id > 0: 
+                                test_waypoint = test_waypoint.get_right_lane()
+                            else:
+                                break
 
-                    #     if test_waypoint:
-                    #         numb_other_vehicle += 1
-                    #         if self.args.log:
-                    #             print('----VEHICLE-OPPOSITE---')
-                    #         # print('##current vehicle:', current_waypoint)
-                    #         # print('####other vehicle:', test_waypoint)
+                        if test_waypoint:
+                            numb_other_vehicle += 1
+                            if self.args.log:
+                                print('----VEHICLE-OPPOSITE---')
+                            # print('##current vehicle:', current_waypoint)
+                            # print('####other vehicle:', test_waypoint)
 
-                    #         road = self._get_road(test_waypoint)
+                            road = self._get_road(test_waypoint)
 
-                    #         road_end = road[-1]
-                    #         road_start = road[0]
+                            road_end = road[-1]
+                            road_start = road[0]
 
-                    #         waypoint_other_vehicle.append(road_start)
-                    #         # self._draw_road(self.world, test_waypoint, road, 
-                    #         #                 vertical_shift=1.0, persistency=50000.0)
-                    #     else:
-                    #         if self.args.log:
-                    #             print("!!!!! Add vehicle in opposite lane failed")
+                            waypoint_other_vehicle.append(road_start)
+                            # self._draw_road(self.world, test_waypoint, road, 
+                            #                 vertical_shift=1.0, persistency=50000.0)
+                        else:
+                            if self.args.log:
+                                print("!!!!! Add vehicle in opposite lane failed")
 
                 else:
                     waypoint_other_vehicle = self._fill_junction(current_waypoint, region)
