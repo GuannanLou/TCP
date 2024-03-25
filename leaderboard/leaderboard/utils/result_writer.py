@@ -15,6 +15,7 @@ from __future__ import print_function
 import time
 from tabulate import tabulate
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import os
 
@@ -85,6 +86,18 @@ class ResultOutputProvider(object):
                 
                 np.save(TEST_CASE_PATH+'/acc', criterion._acc)
                 np.save(TEST_CASE_PATH+'/v', criterion._v)
+
+                controls = pd.DataFrame([[control.throttle, control.steer, control.brake, control.hand_brake, control.reverse, control.manual_gear_shift, control.gear] for control in criterion._control],
+                                        columns = ['throttle', 'steer', 'brake', 'hand_brake', 'reverse', 'manual_gear_shift', 'gear'])
+                controls.to_csv(TEST_CASE_PATH+'/control.csv', index=False)
+
+                passed_waypoints = pd.DataFrame([[location.x, location.y, location.z] for location in criterion._passed_waypoints],
+                                                columns = ['x', 'y', 'z'])
+                passed_waypoints.to_csv(TEST_CASE_PATH+'/real_route.csv', index=False)
+
+                routes = pd.DataFrame([[waypoint.x, waypoint.y, waypoint.z] for waypoint in criterion._waypoints],
+                                        columns = ['x', 'y', 'z'])
+                routes.to_csv(TEST_CASE_PATH+'/ori_route.csv', index=False)
 
                 return tabulate(list_statistics, tablefmt='fancy_grid')+'\n'
         

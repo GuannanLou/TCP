@@ -1526,8 +1526,10 @@ class InRouteTest(Criterion):
 
         self._acc = []
         self._v = []
-        if self._debug == 1:
-            self._last_fitness_score = [0,0,0,0,0]
+        self._control = []
+        self._passed_waypoints = []
+        # if self._debug == 1:
+        self._last_fitness_score = [0,0,0,0,0]
 
 
     def update(self):
@@ -1615,8 +1617,9 @@ class InRouteTest(Criterion):
         # Get min distance from pedestrians
         # Get min distance from static mesh
         # Get distance from destination
-        current_fitness_score = [1000,1000,1000,1000,1000]
-        current_fitness_score[0] = self.follow_the_center_of_the_lane(shortest_distance)
+        current_fitness_score = [0,1000,1000,1000,1000]
+        # current_fitness_score[0] = self.follow_the_center_of_the_lane(shortest_distance)
+        current_fitness_score[0] = self.get_min_distance_from_lane(self._actor, self._waypoints)
         current_fitness_score[1] = self.get_min_distance_from_other_vehicle(self._actor,self._world)
         current_fitness_score[2] = self.get_min_distance_from_pedestrians(self._actor,self._world)
         current_fitness_score[3] = self.get_min_distance_from_static_mesh(self._actor,self._world)
@@ -1625,10 +1628,18 @@ class InRouteTest(Criterion):
         acc = self.get_fast_accl(self._actor)
         self._acc.append(acc)
         self._v.append(self.get_velo(self._actor))
+
+        # control = self._actor.get_control()
+        # self._control.append([control.throttle, control.steer, control.brake, control.hand_brake, control.reverse, control.manual_gear_shift, control.gear])
+        self._control.append(self._actor.get_control())
+
+        # location = self._actor.get_location()
+        # self._passed_waypoints.append([location.x, location.y, location.z])
+        self._passed_waypoints.append(self._actor.get_location())
         # print(acc)
 
-        if self._debug==1:
-            self._last_fitness_score = current_fitness_score.copy()
+        # if self._debug==1:
+        self._last_fitness_score = current_fitness_score.copy()
 
         self.update_fitness_score(current_fitness_score)
 
@@ -1640,8 +1651,12 @@ class InRouteTest(Criterion):
     
     def update_fitness_score(self, current_fitness_score):
         for i, score in enumerate(current_fitness_score):
-            if score < self._fitness_scores[i]:
-                self._fitness_scores[i] = score
+            if i == 0:
+                if score > self._fitness_scores[i]:
+                    self._fitness_scores[i] = score
+            else:
+                if score < self._fitness_scores[i]:
+                    self._fitness_scores[i] = score
 
 
     def follow_the_center_of_the_lane(self, shortest_distance):
@@ -1667,7 +1682,25 @@ class InRouteTest(Criterion):
                 distance = location_1.distance(location_2)
                 distances.append(distance)
         return min(distances)
-                
+
+    def get_min_distance_from_lane(self, ego_vehicle, route):
+        distances = [1000]
+        ego_vehicle_location = ego_vehicle.get_location()
+        for waypoint in route:
+            distance = math.sqrt(((ego_vehicle_location.x - waypoint.x) ** 2) + ((ego_vehicle_location.y - waypoint.y) ** 2))
+            distances.append(distance)
+
+        shortest_distance = (min(distances))
+
+        color = ['↔️  ','']
+        if shortest_distance > self._last_fitness_score[0]:
+            color = ['⬆️  \033[92m','\033[0m']
+        elif shortest_distance < self._last_fitness_score[0]:
+            color = ['⬇️  \033[91m','\033[0m']
+        print("Follow the Center of the Lane: " + color[0] + str(shortest_distance) + color[1])
+        
+        return shortest_distance 
+
     def get_min_distance_from_other_vehicle(self,ego_vehicle, world): # include bicycle
         distances = [1000]
         ego_vehicle_location = ego_vehicle.get_location()
@@ -1683,7 +1716,6 @@ class InRouteTest(Criterion):
                 continue
             distance = self.bounding_box_distance(ego_vehicle, target_vehicle) 
             distances.append(distance)
-
 
         # shortest_distance = (min(distances)) - 3.32
         shortest_distance = (min(distances))
