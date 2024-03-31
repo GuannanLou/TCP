@@ -32,6 +32,7 @@ with open('{}.csv'.format('processLog|'+formatted_datetime), mode='w', newline='
                 except subprocess.CalledProcessError as e:
                     print(f"Run ADS失败，返回码: {e.returncode}")
 
+
 # command = 'pkill -9 -f "python3"'
 # try:
 #     subprocess.run(command, shell=True, check=True)

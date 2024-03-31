@@ -1522,7 +1522,7 @@ class InRouteTest(Criterion):
         # Get min distance from pedestrians
         # Get min distance from static mesh
         # Get distance from destination
-        self._fitness_scores = [1000,1000,1000,1000,1000]
+        self._fitness_scores = [0,1000,1000,1000,1000]
 
         self._acc = []
         self._v = []
@@ -1638,8 +1638,8 @@ class InRouteTest(Criterion):
         self._passed_waypoints.append(self._actor.get_location())
         # print(acc)
 
-        # if self._debug==1:
-        self._last_fitness_score = current_fitness_score.copy()
+        if self._debug==1:
+            self._last_fitness_score = current_fitness_score.copy()
 
         self.update_fitness_score(current_fitness_score)
 
@@ -1692,12 +1692,12 @@ class InRouteTest(Criterion):
 
         shortest_distance = (min(distances))
 
-        color = ['↔️  ','']
-        if shortest_distance > self._last_fitness_score[0]:
-            color = ['⬆️  \033[92m','\033[0m']
-        elif shortest_distance < self._last_fitness_score[0]:
-            color = ['⬇️  \033[91m','\033[0m']
-        print("Follow the Center of the Lane: " + color[0] + str(shortest_distance) + color[1])
+        # color = ['↔️  ','']
+        # if shortest_distance > self._last_fitness_score[0]:
+        #     color = ['⬆️  \033[92m','\033[0m']
+        # elif shortest_distance < self._last_fitness_score[0]:
+        #     color = ['⬇️  \033[91m','\033[0m']
+        # print("Follow the Center of the Lane: " + color[0] + str(shortest_distance) + color[1])
         
         return shortest_distance 
 
