@@ -306,7 +306,7 @@ class TestCase(object):
                 
         # new_vehicles = [lane_waypoint]
         new_vehicles = []
-
+        
         max_move = int((region-padding)/2)
 
         # next_waypoint = lane_waypoint
@@ -314,7 +314,7 @@ class TestCase(object):
         # new_vehicles += lane_waypoint.next_until_lane_end(region)
 
         next_waypoint = lane_waypoint
-        while not next_waypoint.is_junction:
+        while (not next_waypoint.is_junction) and next_waypoint.road_id == lane_waypoint.road_id:
             # next_waypoint = next_waypoint.next(random.randint(padding, 2*region-padding))[0]
             next_waypoint = next_waypoint.next(region)[0]
             new_vehicles.append(next_waypoint)
@@ -322,7 +322,7 @@ class TestCase(object):
         # new_vehicles += lane_waypoint.previous_until_lane_start(region)
 
         previous_waypoint = lane_waypoint
-        while not previous_waypoint.is_junction:
+        while (not previous_waypoint.is_junction) and previous_waypoint.road_id == lane_waypoint.road_id:
             # previous_waypoint = previous_waypoint.previous(random.randint(padding, 2*region-padding))[0]
             previous_waypoint = previous_waypoint.previous(region)[0]
             new_vehicles.append(previous_waypoint)
@@ -340,7 +340,7 @@ class TestCase(object):
         #     new_vehicles.append(next_waypoint)
         #     count += 1
         new_vehicles = [self._random_move_waypoint(waypoint, max_move) for waypoint in new_vehicles] + [lane_waypoint]
-
+        # print('{}\t{}\t{}\t{}'.format(lane_waypoint.lane_id, lane_waypoint.road_id, max_move, len(new_vehicles), lane_waypoint.transform.location))
         return new_vehicles
     
     def _random_move_waypoint(self, waypoint, max_move):
@@ -410,8 +410,8 @@ class TestCase(object):
                 roads.append(previous_waypoint.road_id)
                 road_waypoints.append(previous_waypoint)
 
-        for waypoint in road_waypoints:
-            print(waypoint.lane_id, waypoint.road_id, waypoint.lane_change, waypoint.lane_type, waypoint.is_junction, str(waypoint.transform.location))
+        # for waypoint in road_waypoints:
+        #     print(waypoint.lane_id, waypoint.road_id, waypoint.lane_change, waypoint.lane_type, waypoint.is_junction, str(waypoint.transform.location))
 
         return road_waypoints
 
@@ -454,6 +454,7 @@ class TestCase(object):
         new_vehicles = []
         for road_waypoint in road_waypoints:
             new_vehicles += self._fill_road(road_waypoint, region)
+        print('# of added vehicles:',len(new_vehicles))
         return new_vehicles
 
     def _load_and_run_scenario(self, args, config):

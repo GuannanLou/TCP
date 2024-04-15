@@ -72,8 +72,9 @@ export GA=False
 export SURROGATE=False
 export SURROGATE_MODEL=None
 # export TIMEOUT=60
-export TIMEOUT=120
+# export TIMEOUT=120
 # export TIMEOUT=5
+export TIMEOUT=2
 # export REGION=-1
 # # min for 5
 
