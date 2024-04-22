@@ -12,6 +12,12 @@ with open('{}.csv'.format('processLog|'+formatted_datetime), mode='w', newline='
     for ADS in ['TCP', 'InterFuser']:
         for section in ['Curve', 'Straight']:
             for level in [0,1,2,3,4,'baseline']:
+    # for ADS in ['InterFuser']:
+    #     for section in ['Curve', 'Straight']:
+    #         for level in [1,4,'baseline']:
+    # for ADS in ['TCP']:
+    #     for section in ['Curve', 'Straight']:
+    #         for level in [1]:
 
                 current_time = datetime.datetime.now()
                 writer.writerow([current_time, ADS, section, level])

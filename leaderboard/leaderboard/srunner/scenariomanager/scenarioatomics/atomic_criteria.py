@@ -1522,14 +1522,14 @@ class InRouteTest(Criterion):
         # Get min distance from pedestrians
         # Get min distance from static mesh
         # Get distance from destination
-        self._fitness_scores = [0,1000,1000,1000,1000]
+        self._fitness_scores = [0,(1000,0),1000,1000,1000]
 
         self._acc = []
         self._v = []
         self._control = []
         self._passed_waypoints = []
         # if self._debug == 1:
-        self._last_fitness_score = [0,0,0,0,0]
+        self._last_fitness_score = [0,(1000,0),0,0,0]
 
 
     def update(self):
@@ -1617,7 +1617,7 @@ class InRouteTest(Criterion):
         # Get min distance from pedestrians
         # Get min distance from static mesh
         # Get distance from destination
-        current_fitness_score = [0,1000,1000,1000,1000]
+        current_fitness_score = [0,(1000,0),1000,1000,1000]
         # current_fitness_score[0] = self.follow_the_center_of_the_lane(shortest_distance)
         current_fitness_score[0] = self.get_min_distance_from_lane(self._actor, self._waypoints)
         current_fitness_score[1] = self.get_min_distance_from_other_vehicle(self._actor,self._world)
@@ -1702,7 +1702,7 @@ class InRouteTest(Criterion):
         return shortest_distance 
 
     def get_min_distance_from_other_vehicle(self,ego_vehicle, world): # include bicycle
-        distances = [1000]
+        distances = [(1000,0)]
         ego_vehicle_location = ego_vehicle.get_location()
         
         # for target_vehicle in world.get_actors().filter('vehicle.*'):
@@ -1715,7 +1715,13 @@ class InRouteTest(Criterion):
             if target_vehicle.id == ego_vehicle.id:
                 continue
             distance = self.bounding_box_distance(ego_vehicle, target_vehicle) 
-            distances.append(distance)
+            forward = ego_vehicle.get_transform().get_forward_vector()
+            direction = self.rotation_angle_and_direction_2D(
+                np.array([forward.x, forward.y]),
+                np.array([ego_vehicle.get_location().x - target_vehicle.get_location().x, 
+                          ego_vehicle.get_location().y - target_vehicle.get_location().y])
+            )
+            distances.append((distance, direction))
 
         # shortest_distance = (min(distances)) - 3.32
         shortest_distance = (min(distances))
@@ -1811,6 +1817,10 @@ class InRouteTest(Criterion):
         else:
             return 1
 
+    def rotation_angle_and_direction_2D(self, A, B):
+        angle_A = np.arctan2(A[1], A[0])
+        angle_B = np.arctan2(B[1], B[0])
+        return np.degrees(angle_B - angle_A)
 
 class RouteCompletionTest(Criterion):
 
