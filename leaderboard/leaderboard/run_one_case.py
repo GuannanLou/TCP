@@ -914,7 +914,8 @@ class TestCase(object):
         """
         Run the challenge mode
         """
-        print('run_one_case')
+        # print('run_one_case')
+
         # 9 weather, 3 other vehicle, 2 position offset
         config.repetition_index = 0
         start_time = time.time() 
@@ -924,9 +925,6 @@ class TestCase(object):
         config.ego_vehicle_vec = scenario_vec[9+3:9+3+2] #update should be later, as we donot have map in it
         
         config.other_vehicle_vec = [1,1,1]
-        # config.ego_vehicle_vec = [1,0]
-        # config.weather_vec  = [0,0,0,0,0,0,0,0,0]
-        # print(config.weather_vec+config.other_vehicle_vec+config.ego_vehicle_vec)
 
         config.vehicle_infront, config.vehicle_opposite, config.vehicle_side = other_vehicle_parser(config.other_vehicle_vec)
         config.weather = weather_parser(config.weather_vec)
@@ -996,20 +994,6 @@ def log_experiment_configs(json_path):
 
     print("Log experiment configs")
 
-    # ## Experiment Controls
-    # export AGENT_MODE=0
-    # export ADS_MODEL=False
-    # export GA=False
-    # export SURROGATE=False
-    # export SURROGATE_MODEL=None
-    # # export TIMEOUT=60
-    # export TIMEOUT=120
-    # export REGION=7
-                    
-    # ## Information Collection
-    # export SAVE_IMG=True
-    # export LOG=True
-    # export SAVE_PATH=../SBT-data/${MODEL}/${current_time}--${SAVE_IMG_TEXT}/
 
 def main():
     description = "CARLA AD Leaderboard Evaluation: evaluate your Agent in CARLA scenarios\n"

@@ -23,12 +23,7 @@ export MAX_SPEED=5
 
 
 # Roach data collection
-# export ROUTES=leaderboard/data/TCP_training_routes/${ROUTE_FILE}.xml
-# export TEAM_AGENT=team_code/roach_ap_agent.py
-# export TEAM_CONFIG=roach/config/config_agent.yaml
-# export CHECKPOINT_ENDPOINT=data_collect_${ROUTE_FILE}_${current_time}.json
-# export SCENARIOS=leaderboard/data/scenarios/all_towns_traffic_scenarios.json
-# export SAVE_PATH=data/${ROUTE_FILE}_${current_time}/
+
 
 MODEL=$1
 if [ "$MODEL" = "TCP" ]; then
@@ -56,8 +51,6 @@ else
     echo "Please include the road section (Curve, Straight)"
     exit 1
 fi
-# export ROUTE_FILE=routes_short
-# export ROUTE_FILE=routes_courve
 current_time=$(date "+%Y-%m-%d|%H:%M:%S")
 export ROUTES=leaderboard/data/TCP_training_routes/${ROUTE_FILE}.xml
 export CHECKPOINT_ENDPOINT=data_collect_${ROUTE_FILE}_${current_time}.json
@@ -71,12 +64,7 @@ export ADS_MODEL=False
 export GA=False
 export SURROGATE=False
 export SURROGATE_MODEL=None
-# export TIMEOUT=60
 export TIMEOUT=120
-# export TIMEOUT=5
-# export TIMEOUT=2
-# export REGION=-1
-# # min for 5
 
 LEVEL=$3
 if [ "$LEVEL" = "0" ]; then

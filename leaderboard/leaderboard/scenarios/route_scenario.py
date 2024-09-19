@@ -208,7 +208,7 @@ class RouteScenario(BasicScenario):
 		self.ego_vehicle = self._update_ego_vehicle()
 		
 		self.timeout = self.config.timeout
-		print('timeout', self.timeout)
+		# print('timeout', self.timeout)
 
 		self.list_scenarios = self._build_scenario_instances(world,
 															 self.ego_vehicle,
@@ -239,7 +239,6 @@ class RouteScenario(BasicScenario):
 		world_annotations = RouteParser.parse_annotations_file(config.scenario_file)
 
 		# prepare route's trajectory (interpolate and add the GPS route)
-		# gps_route, route = interpolate_trajectory(world, config.trajectory)
 		gps_route, route, wp_route = interpolate_trajectory(world, config.trajectory)
 
 		potential_scenarios_definitions, _ = RouteParser.scan_route_for_scenarios(
@@ -248,68 +247,14 @@ class RouteScenario(BasicScenario):
 		self.route = route
 		CarlaDataProvider.set_ego_vehicle_route(convert_transform_to_location(self.route))
 
-		# ## 239-284 waypoint generations
-		# actor_location = carla.Location(self.route[0][0].location.x - 55,
-		# 		     					   self.route[0][0].location.y + 4,
-		# 								   self.route[0][0].location.z)
-		# actor_rotation = carla.Rotation(360,0,0)
-		# actor_transform = carla.Transform(actor_location, actor_rotation)
-
-		# self.other_actors_transforms = [actor_transform]
-
-		# start_location = actor_location
-		# waypoints = [start_location]
-		# mod = 0
-
-		# if mod == 0: #Straight
-		# 	for i in range(60):
-		# 		new_location = carla.Location(start_location.x + i*1, start_location.y, start_location.z)
-		# 		waypoints.append(new_location)
-		# if mod == 1: #Wave
-		# 	for i in range(60):
-		# 		new_location = carla.Location(start_location.x + i*1, start_location.y-(abs(i%14-7))*0.3, start_location.z)
-		# 		waypoints.append(new_location)		
-		# if mod == 2: #Collision
-		# 	for i in range(60):
-		# 		new_location = carla.Location(start_location.x + i*1, start_location.y+((abs(i%60-30)-30)/30)*5, start_location.z)
-		# 		waypoints.append(new_location)
-		# if mod == 3: #TurnLeft
-		# 	for i in range(60):
-		# 		if i <= 15:
-		# 			new_location = carla.Location(waypoints[-1].x + 1, waypoints[-1].y, waypoints[-1].z)
-		# 		elif i <= 20:
-		# 			new_location = carla.Location(waypoints[-1].x + 1, waypoints[-1].y - 1, waypoints[-1].z)
-		# 		else:
-		# 			new_location = carla.Location(waypoints[-1].x, waypoints[-1].y - 1, waypoints[-1].z)
-		# 		waypoints.append(new_location)
-		# if mod == 4: #TurnLeft-LessPoint
-		# 		waypoints.append(carla.Location(waypoints[-1].x + 5, waypoints[-1].y, waypoints[-1].z))
-		# 		waypoints.append(carla.Location(waypoints[-1].x + 5, waypoints[-1].y, waypoints[-1].z))
-		# 		waypoints.append(carla.Location(waypoints[-1].x + 5, waypoints[-1].y, waypoints[-1].z))
-		# 		waypoints.append(carla.Location(waypoints[-1].x + 5, waypoints[-1].y, waypoints[-1].z))
-		# 		waypoints.append(carla.Location(waypoints[-1].x, waypoints[-1].y-5, waypoints[-1].z))
-		# 		waypoints.append(carla.Location(waypoints[-1].x, waypoints[-1].y-5, waypoints[-1].z))
-		# 		waypoints.append(carla.Location(waypoints[-1].x, waypoints[-1].y-5, waypoints[-1].z))
-		# 		waypoints.append(carla.Location(waypoints[-1].x, waypoints[-1].y-5, waypoints[-1].z))
-
-
-		# self.other_vehicle_waypoints = waypoints
-
 		config.agent.set_global_plan(gps_route, self.route, wp_route)
 
 		# Sample the scenarios to be used for this route instance.
 		self.sampled_scenarios_definitions = self._scenario_sampling(potential_scenarios_definitions)
 
 		# Timeout of scenario in seconds
-		# self.timeout = self._estimate_route_timeout()
 		self.timeout = self._estimate_route_timeout()/2
 		# print(self.timeout)
-
-		# Mode of other vehicle
-		## 0: auto
-		## 1: waypoint
-		## 2: full_vehicles
-		# self.agent_mod = 2
 
 		# Print route in debug mode
 		if debug_mode:
