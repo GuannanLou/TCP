@@ -1,4 +1,4 @@
-# TCP - Trajectory-guided Control Prediction for End-to-end Autonomous Driving: A Simple yet Strong Baseline
+<!-- # TCP - Trajectory-guided Control Prediction for End-to-end Autonomous Driving: A Simple yet Strong Baseline
 
 ![teaser](assets/teaser_.png)
 
@@ -105,5 +105,5 @@ Our code is based on several repositories:
 - [Transfuser](https://github.com/autonomousvision/transfuser)
 - [Roach](https://github.com/zhejz/carla-roach)
 - [CARLA Leaderboard](https://github.com/carla-simulator/leaderboard)
-- [Scenario Runner](https://github.com/carla-simulator/scenario_runner)
+- [Scenario Runner](https://github.com/carla-simulator/scenario_runner) -->
 
